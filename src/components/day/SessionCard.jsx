@@ -1,6 +1,7 @@
 import { STATUS, teamShort } from '../../data/schedule.js'
 import { PinIcon } from '../Icons.jsx'
 import { StatusDot } from '../StatusLegend.jsx'
+import { useBookingTriggers } from '../../state/ScheduleContext.jsx'
 
 // Status styling lives in index.css under .atlas-session-card--{status}.
 const CARD_CLASS = {
@@ -12,9 +13,10 @@ const CARD_CLASS = {
 
 export default function SessionCard({ session, style }) {
   const live = session.status === 'insession'
+  const triggers = useBookingTriggers()
 
   return (
-    <article className={`${CARD_CLASS[session.status]} atlas-rise`} style={style}>
+    <article className={`${CARD_CLASS[session.status]} atlas-rise`} style={style} {...triggers(session)} aria-label={`${session.name}, ${session.start} to ${session.end}`}>
       {live && <div className="atlas-session-glow" />}
 
       <div className="atlas-session-time">

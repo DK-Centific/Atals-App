@@ -23,12 +23,14 @@ The DAY / WEEK / MONTH pills switch routes; "VIEW FULL DAY →" on Month opens D
 ```
 src/
   data/schedule.js          seed sessions, teams, week and month data (one source for all views)
+  lib/bookings.js           booking rules: validation, team double-booking, read-only statuses, display names
   index.css                 design tokens and component classes from the designs
   components/
     Sidebar.jsx             left rail (Month uses its own variant, as designed)
     ViewToggle.jsx          DAY / WEEK / MONTH pills
     StatusLegend.jsx        status legend + StatusDot
     Icons.jsx
+    booking/                BookingDrawer (details, edit, reschedule, cancel), BookingMenu (right-click), Fields
     day/                    ActiveSessionCard, BookingPanel, SessionCard
     week/                   WeekGrid, CalendarEvent
     month/                  TodaySummary, MonthGrid
@@ -48,7 +50,16 @@ Motion follows Project Twilight (Helios booking and its page transitions); the t
 
 ## What works
 
-- Book Session adds the session to all three views (in memory until reload) and confirms with a toast.
-- The booking panel's week arrows, the Month arrows, map zoom, and the "+" (reset the form) work.
-- Clicking today's sessions (Week events, Month strip, today's Month cell) opens the Day view.
-- Not built yet: saving bookings, "CREATE NEW" team, client name/location on a booking, and the Teams/Participants/Settings pages.
+- **New Booking** (Day view): pick a day, times, participant, location and team; contact and notes are optional. Booking checks
+  that the end is after the start, the slot is today or later and between 08:00 and 22:00, and that the team isn't already booked then.
+- **Booking details**: click any session (Day card, Week event, Month "today" strip, or a Month day with bookings) to open the
+  side sheet with participant, contact, team, location, protocol, notes and an activity history.
+- **Edit**, **Reschedule** (keeps a "rescheduled from" record and an optional reason) and **Cancel** (optional reason; the booking
+  stays on the calendar as Cancelled) all happen in that sheet. **Start session** and **Mark completed** move a booking through
+  its statuses; only one session can be live at a time.
+- **Right-click** a session (or Shift+F10 on it) for View / Edit / Reschedule / Cancel. Escape closes the sheet or menu.
+- Completed and cancelled bookings are read-only, as in Twilight.
+- Bookings are saved in this browser's localStorage (`atlas_schedule_v1`), so changes survive a refresh. Clear site data to go
+  back to the seed schedule. There is no backend.
+- Map zoom, the booking panel's week arrows, the Month arrows and the "+" (reset the form) work.
+- Not built yet: confirmation emails, "CREATE NEW" team, and the Teams/Participants/Settings pages.

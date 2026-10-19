@@ -26,7 +26,7 @@ export default function ActiveSessionCard({ session }) {
 
         <div className="atlas-live-card-name">{session.name}</div>
         <div className="atlas-live-card-time">
-          {session.start} — {session.end} {session.timezone}
+          {session.start} — {session.end} {session.timezone ?? ''}
         </div>
 
         <div className="atlas-live-card-details">
@@ -36,7 +36,7 @@ export default function ActiveSessionCard({ session }) {
           </div>
           <div className="atlas-live-card-detail atlas-live-card-detail--end">
             <div className="atlas-eyebrow">PROTOCOL</div>
-            <div className="atlas-live-card-value">{session.protocol}</div>
+            <div className="atlas-live-card-value">{session.protocol || 'Standard'}</div>
           </div>
         </div>
       </div>
@@ -77,7 +77,7 @@ function RouteMap({ session }) {
       </svg>
 
       <div className="atlas-route-eta">
-        EN ROUTE · ETA {session.eta}
+        EN ROUTE · ETA {session.eta ?? session.start}
       </div>
 
       <div className="atlas-route-zoom">
