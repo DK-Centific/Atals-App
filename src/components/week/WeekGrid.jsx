@@ -2,7 +2,6 @@ import { Fragment } from 'react'
 import { TODAY, toMinutes } from '../../data/schedule.js'
 import { weekOf } from '../../lib/dates.js'
 import { useStagger } from '../../motion/motion.js'
-import useViewNavigate from '../../motion/useViewNavigate.js'
 import { overlaps } from '../../state/ScheduleContext.jsx'
 import CalendarEvent from './CalendarEvent.jsx'
 
@@ -32,7 +31,6 @@ function layoutLanes(daySessions) {
 // Hour-by-day timeline grid. Each session renders in the cell of the hour it starts in.
 export default function WeekGrid({ sessions, weekDate = TODAY }) {
   const week = weekOf(weekDate)
-  const goTo = useViewNavigate()
   const inWeek = sessions.filter((s) => s.date >= week[0].date && s.date <= week[6].date)
   const delay = useStagger(
     [...inWeek].sort((a, b) => toMinutes(a.start) - toMinutes(b.start)).map((s) => s.id),
@@ -70,7 +68,6 @@ export default function WeekGrid({ sessions, weekDate = TODAY }) {
                   session={s}
                   {...lanes.get(s.id)}
                   style={delay(s.id)}
-                  onOpen={s.date === TODAY ? () => goTo('/day') : undefined}
                 />
               ))}
             </div>

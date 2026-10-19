@@ -1,21 +1,27 @@
 import { useState } from 'react'
-import { TEAMS, TODAY, teamShort, toMinutes } from '../../data/schedule.js'
+import { TEAMS, TODAY, teamShort } from '../../data/schedule.js'
 import { addDays, longDayLabel, weekOf, weekRangeLabel } from '../../lib/dates.js'
+import { checkDetails, checkTimes, conflictMessage, displayNames, findConflict } from '../../lib/bookings.js'
 import { pressProps } from '../../motion/motion.js'
 import { useToast } from '../../motion/Toast.jsx'
 import { useSchedule } from '../../state/ScheduleContext.jsx'
-import { CheckIcon, ClockIcon, PlusIcon } from '../Icons.jsx'
+import { PlusIcon } from '../Icons.jsx'
+import { TeamPicker, TextField, TimeField } from '../booking/Fields.jsx'
 
-const DEFAULTS = { date: TODAY, start: '17:00', end: '19:00', team: TEAMS[0].id }
+const DEFAULTS = {
+  date: TODAY, start: '17:00', end: '19:00', team: TEAMS[0].id,
+  name: '', location: '', email: '', phone: '', notes: '',
+}
 
-// "New Booking" form: pick a day, a time range and a team, then book.
+// "New Booking" form: pick a day, a time range, the participant and a team, then book.
 export default function BookingPanel() {
-  const { addSession } = useSchedule()
+  const { sessions, addSession, openBooking } = useSchedule()
   const toast = useToast()
   const [form, setForm] = useState(DEFAULTS)
   const [slide, setSlide] = useState({ dir: null, key: 0 })
   const [shakeKey, setShakeKey] = useState(0)
   const [resetKey, setResetKey] = useState(0)
+  const [more, setMore] = useState(false)
   const set = (patch) => setForm((f) => ({ ...f, ...patch }))
 
   const week = weekOf(form.date)
@@ -32,24 +38,31 @@ export default function BookingPanel() {
     if (weekChanged) setSlide((s) => ({ dir: DEFAULTS.date < form.date ? 'prev' : 'next', key: s.key + 1 }))
   }
 
+  const fail = (message) => {
+    setShakeKey((k) => k + 1)
+    toast(message, 'error')
+  }
+
   const book = () => {
-    if (toMinutes(form.end) <= toMinutes(form.start)) {
-      setShakeKey((k) => k + 1)
-      toast('End time must be after the start time.', 'error')
-      return
-    }
-    addSession({
+    const clash = findConflict(sessions, form)
+    const problem = checkTimes(form) ?? checkDetails(form) ?? (clash && conflictMessage(clash))
+    if (problem) return fail(problem)
+    const created = addSession({
       date: form.date,
       start: form.start,
       end: form.end,
       team: form.team,
       status: 'booked',
-      name: 'New Session',
-      short: 'New Session',
-      summary: 'New Session',
-      location: 'Location to be confirmed',
+      ...displayNames(form.name),
+      location: form.location.trim() || 'Location to be confirmed',
+      email: form.email.trim(),
+      phone: form.phone.trim(),
+      notes: form.notes.trim(),
     })
     toast(`Booked ${longDayLabel(form.date)} · ${form.start} – ${form.end} · Team ${teamShort(form.team)}`)
+    setForm((f) => ({ ...DEFAULTS, date: f.date }))
+    setMore(false)
+    openBooking(created.id)
   }
 
   return (
@@ -100,45 +113,36 @@ export default function BookingPanel() {
         <TimeField label="END TIME" value={form.end} onChange={(v) => set({ end: v })} />
       </div>
 
+      <div className="atlas-booking-participant">
+        <TextField label="PARTICIPANT" value={form.name} placeholder="Full name" onChange={(v) => set({ name: v })} />
+        <TextField label="LOCATION" value={form.location} placeholder="Address or meeting link" onChange={(v) => set({ location: v })} />
+        <span
+          className="atlas-booking-more atlas-link"
+          aria-expanded={more}
+          {...pressProps(() => setMore((m) => !m), more ? 'Hide contact and notes' : 'Add contact and notes')}
+        >
+          {more ? '− HIDE CONTACT & NOTES' : '+ CONTACT & NOTES'}
+        </span>
+        {more && (
+          <div className="atlas-booking-extra atlas-rise">
+            <TextField label="EMAIL" type="email" value={form.email} placeholder="name@example.com" onChange={(v) => set({ email: v })} />
+            <TextField label="PHONE" type="tel" value={form.phone} placeholder="Optional" onChange={(v) => set({ phone: v })} />
+            <TextField label="NOTES" multiline value={form.notes} placeholder="Access, parking, anything the team should know" onChange={(v) => set({ notes: v })} />
+          </div>
+        )}
+      </div>
+
       <div className="atlas-booking-teams">
         <div className="atlas-booking-teams-head">
           <label className="atlas-eyebrow">ASSIGN A TEAM</label>
           <span className="atlas-team-create atlas-link">CREATE NEW</span>
         </div>
-        <div className="atlas-team-list">
-          {TEAMS.map((t) => {
-            const active = t.id === form.team
-            return (
-              <div
-                key={t.id}
-                className={`atlas-team-option${active ? ' is-active' : ''}`}
-                aria-pressed={active}
-                {...pressProps(() => set({ team: t.id }), t.name)}
-              >
-                <div className="atlas-team-badge">{t.code}</div>
-                <span className="atlas-team-name">{t.name}</span>
-                <div className="atlas-team-check"><CheckIcon /></div>
-              </div>
-            )
-          })}
-        </div>
+        <TeamPicker value={form.team} onChange={(team) => set({ team })} />
       </div>
 
       <div className="atlas-booking-footer">
         <button className="atlas-btn-primary" onClick={book}>Book Session</button>
       </div>
     </section>
-  )
-}
-
-function TimeField({ label, value, onChange }) {
-  return (
-    <div className="atlas-time-field">
-      <label className="atlas-eyebrow">{label}</label>
-      <div className="atlas-time-input-wrap">
-        <input type="time" value={value} onChange={(e) => onChange(e.target.value)} className="atlas-input" />
-        <ClockIcon />
-      </div>
-    </div>
   )
 }

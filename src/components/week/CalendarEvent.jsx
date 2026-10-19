@@ -1,6 +1,6 @@
 import { STATUS, teamShort, toMinutes } from '../../data/schedule.js'
 import { StatusDot } from '../StatusLegend.jsx'
-import { pressProps } from '../../motion/motion.js'
+import { useBookingTriggers } from '../../state/ScheduleContext.jsx'
 
 export const HOUR_HEIGHT = 80 // px per hour row, matches .atlas-week-slot
 
@@ -13,7 +13,8 @@ const EVENT_CLASS = {
 }
 
 // An event block positioned inside the grid cell of its starting hour.
-export default function CalendarEvent({ session, lane = 0, lanes = 1, style, onOpen }) {
+export default function CalendarEvent({ session, lane = 0, lanes = 1, style }) {
+  const triggers = useBookingTriggers()
   const startMin = toMinutes(session.start)
   const top = ((startMin % 60) / 60) * HOUR_HEIGHT
   const height = ((toMinutes(session.end) - startMin) / 60) * HOUR_HEIGHT
@@ -28,7 +29,8 @@ export default function CalendarEvent({ session, lane = 0, lanes = 1, style, onO
       className={`${EVENT_CLASS[session.status]} atlas-rise`}
       style={{ top, height, ...laneStyle, ...style }}
       title={`${session.name} · ${session.start} - ${session.end}`}
-      {...(onOpen ? pressProps(onOpen, `${session.name}, ${session.start} to ${session.end}`) : {})}
+      {...triggers(session)}
+      aria-label={`${session.name}, ${session.start} to ${session.end}`}
     >
       <div className="atlas-week-event-status">
         <StatusDot status={session.status} pulse={live} />

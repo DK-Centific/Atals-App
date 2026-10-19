@@ -10,7 +10,7 @@ import useViewNavigate from '../motion/useViewNavigate.js'
 import { sessionsOn, useSchedule } from '../state/ScheduleContext.jsx'
 
 export default function MonthView() {
-  const { sessions } = useSchedule()
+  const { sessions, openDay } = useSchedule()
   const goTo = useViewNavigate()
   const t = parse(TODAY)
   const [ym, setYm] = useState({ y: t.getUTCFullYear(), m: t.getUTCMonth() })
@@ -37,6 +37,7 @@ export default function MonthView() {
       return
     }
     setSelected(date)
+    if (sessionsOn(sessions, date).length) openDay(date)
   }
 
   return (
