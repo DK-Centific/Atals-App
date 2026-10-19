@@ -1,0 +1,766 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Design tokens and component classes shared by the Day, Week and Month designs.
+   Where the designs disagree, the rule is scoped to that view's wrapper
+   (.atlas-day-view, .atlas-week-view, .atlas-month-view). */
+
+:root {
+    --bg-main: #1A1C1E;
+    --bg-surface: #222428;
+    --bg-recessed: #151719;
+
+    --shadow-light: rgba(255, 255, 255, 0.03);
+    --shadow-dark: rgba(0, 0, 0, 0.5);
+    --shadow-darker: rgba(0, 0, 0, 0.8);
+
+    --text-primary: #f0f0f2;
+    --text-secondary: #858992;
+    --text-muted: #5e626b;
+
+    --accent: #00E5FF;
+    --accent-hover: #00B8CC;
+    --accent-glow: rgba(0, 229, 255, 0.3);
+
+    --status-booked: #858992;
+    --status-insession: #00E5FF;
+    --status-completed: #10B981;
+    --status-cancelled: #EF4444;
+
+    --font-serif: 'Cormorant Garamond', serif;
+    --font-sans: 'Inter', sans-serif;
+
+    --neu-flat: 12px 12px 24px var(--shadow-dark), -8px -8px 24px var(--shadow-light);
+    --neu-flat-sm: 6px 6px 12px var(--shadow-dark), -4px -4px 12px var(--shadow-light);
+    --neu-inset: inset 8px 8px 16px var(--shadow-darker), inset -4px -4px 12px var(--shadow-light);
+    --neu-inset-sm: inset 4px 4px 8px var(--shadow-darker), inset -2px -2px 6px var(--shadow-light);
+
+    --border-subtle: 1px solid rgba(255, 255, 255, 0.02);
+}
+
+body {
+    background-color: var(--bg-main);
+    color: var(--text-primary);
+    font-family: var(--font-sans);
+    overflow: hidden;
+}
+
+/* ---------- Shared ---------- */
+
+.atlas-raised { background: var(--bg-surface); box-shadow: var(--neu-flat); border: var(--border-subtle); }
+.atlas-raised-sm { background: var(--bg-surface); box-shadow: var(--neu-flat-sm); border: var(--border-subtle); }
+.atlas-well { background: var(--bg-recessed); box-shadow: var(--neu-inset); }
+.atlas-well-sm { background: var(--bg-recessed); box-shadow: var(--neu-inset-sm); }
+
+.atlas-eyebrow {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+}
+
+.atlas-day-view ::-webkit-scrollbar { width: 6px; }
+.atlas-day-view ::-webkit-scrollbar-track { background: transparent; }
+.atlas-day-view ::-webkit-scrollbar-thumb { background: var(--bg-surface); border-radius: 10px; }
+.atlas-day-view ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+.atlas-rail-item {
+    width: 56px;
+    height: 56px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    cursor: pointer;
+    color: var(--text-secondary);
+    transition: all 0.3s ease;
+}
+.atlas-day-view .atlas-rail-item:hover { color: var(--text-primary); }
+.atlas-rail-item.is-active {
+    color: var(--accent);
+    background: var(--bg-recessed);
+    box-shadow: var(--neu-inset-sm);
+}
+.atlas-rail-item svg {
+    width: 24px;
+    height: 24px;
+    stroke: currentColor;
+    stroke-width: 1.5;
+    fill: none;
+}
+
+.atlas-view-tab {
+    padding: 10px 24px;
+    border-radius: 100px;
+    background: var(--bg-surface);
+    box-shadow: var(--neu-flat-sm);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.2s;
+    border: var(--border-subtle);
+}
+.atlas-view-tab.is-active {
+    background: linear-gradient(180deg, var(--bg-surface) 0%, var(--bg-recessed) 100%);
+    box-shadow: var(--neu-inset-sm);
+}
+.atlas-view-tab-dot {
+    width: 6px; height: 6px; border-radius: 50%; background-color: var(--text-muted);
+}
+.atlas-view-tab.is-active .atlas-view-tab-dot {
+    background-color: var(--accent);
+    box-shadow: 0 0 8px var(--accent-glow);
+}
+
+.atlas-status-dot { width: 8px; height: 8px; border-radius: 50%; }
+.atlas-week-view .atlas-status-dot { width: 6px; height: 6px; }
+.atlas-status-dot--insession { background: var(--status-insession); box-shadow: 0 0 8px var(--accent-glow); }
+.atlas-status-dot--booked { background: var(--status-booked); }
+.atlas-status-dot--completed { background: var(--status-completed); }
+.atlas-status-dot--cancelled { background: var(--status-cancelled); }
+
+.atlas-input {
+    width: 100%;
+    background: var(--bg-recessed);
+    box-shadow: var(--neu-inset-sm);
+    border: none;
+    border-radius: 16px;
+    padding: 14px 16px;
+    color: var(--text-primary);
+    font-family: var(--font-sans);
+    outline: none;
+}
+.atlas-input::-webkit-calendar-picker-indicator {
+    filter: invert(1) opacity(0.5);
+    cursor: pointer;
+}
+
+/* ---------- Day view ---------- */
+
+.atlas-orb {
+    width: 140px;
+    height: 140px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 25%, #E0FFFF, #00E5FF 40%, #008B99 75%, #00333D);
+    box-shadow: 0 15px 40px var(--accent-glow), inset -10px -15px 25px rgba(0,0,0,0.6);
+    position: relative;
+    animation: float 8s ease-in-out infinite;
+}
+.atlas-orb::before {
+    content: ''; position: absolute; inset: 0; border-radius: 50%;
+    border: 1px solid rgba(255,255,255,0.15); transform: rotateX(60deg);
+}
+.atlas-orb::after {
+    content: ''; position: absolute; inset: 0; border-radius: 50%;
+    border: 1px solid rgba(255,255,255,0.15); transform: rotateY(60deg);
+}
+
+@keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
+}
+
+.atlas-date-chip {
+    width: 48px;
+    height: 64px;
+    border-radius: 16px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    background: var(--bg-surface);
+    box-shadow: var(--neu-flat-sm);
+    cursor: pointer;
+    transition: all 0.2s;
+    border: var(--border-subtle);
+}
+.atlas-date-chip.is-active {
+    background: var(--bg-recessed);
+    box-shadow: var(--neu-inset-sm);
+    color: var(--accent);
+}
+.atlas-date-chip span:last-child {
+    font-size: 16px;
+    font-weight: 600;
+    margin-top: 4px;
+}
+
+.atlas-team-option {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 12px 16px;
+    background: var(--bg-surface);
+    border-radius: 16px;
+    box-shadow: var(--neu-flat-sm);
+    cursor: pointer;
+    border: var(--border-subtle);
+    transition: all 0.2s;
+}
+.atlas-team-option.is-active {
+    box-shadow: var(--neu-inset-sm);
+    background: var(--bg-recessed);
+    border-color: rgba(0, 229, 255, 0.1);
+}
+.atlas-team-badge {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: var(--bg-surface);
+    box-shadow: var(--neu-flat-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-secondary);
+}
+.atlas-team-option.is-active .atlas-team-badge {
+    color: var(--accent);
+    box-shadow: var(--neu-inset-sm);
+}
+.atlas-team-check {
+    margin-left: auto;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: var(--accent);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transform: scale(0.8);
+    transition: all 0.2s;
+}
+.atlas-team-option.is-active .atlas-team-check {
+    opacity: 1;
+    transform: scale(1);
+}
+
+.atlas-btn-primary {
+    width: 100%;
+    padding: 16px;
+    border-radius: 20px;
+    background: var(--accent);
+    color: #000;
+    font-weight: 600;
+    font-size: 15px;
+    border: none;
+    cursor: pointer;
+    box-shadow: 0 8px 24px var(--accent-glow);
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+.atlas-btn-primary:active {
+    transform: scale(0.98);
+    box-shadow: 0 4px 12px var(--accent-glow);
+}
+
+.atlas-session-card {
+    background: var(--bg-surface);
+    border-radius: 24px;
+    padding: 24px;
+    box-shadow: var(--neu-flat-sm);
+    border: var(--border-subtle);
+    display: flex;
+    gap: 24px;
+    position: relative;
+    overflow: hidden;
+    transition: transform 0.2s;
+}
+.atlas-session-card:hover {
+    transform: translateY(-2px);
+}
+.atlas-session-card::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 24px; bottom: 24px;
+    width: 3px;
+    border-radius: 0 4px 4px 0;
+    background: var(--text-secondary);
+}
+.atlas-session-card.atlas-session-card--insession::before { background: var(--status-insession); box-shadow: 0 0 12px var(--accent-glow); }
+.atlas-session-card.atlas-session-card--completed::before { background: var(--status-completed); }
+.atlas-session-card.atlas-session-card--cancelled::before { background: var(--status-cancelled); }
+
+/* ---------- Week view ---------- */
+
+.atlas-week-grid {
+    display: grid;
+    grid-template-columns: 60px repeat(7, 1fr);
+    height: 100%;
+}
+.atlas-week-day-head {
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+    padding: 16px 8px;
+    text-align: center;
+}
+.atlas-week-hour {
+    height: 80px;
+    border-right: 1px solid rgba(255,255,255,0.03);
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    padding-top: 8px;
+    color: var(--text-muted);
+    font-size: 11px;
+    font-weight: 500;
+}
+.atlas-week-slot {
+    height: 80px;
+    border-right: 1px solid rgba(255,255,255,0.03);
+    border-bottom: 1px solid rgba(255,255,255,0.03);
+    position: relative;
+}
+.atlas-week-event {
+    position: absolute;
+    left: 4px;
+    right: 4px;
+    padding: 8px;
+    border-radius: 12px;
+    font-size: 11px;
+    border-left-width: 3px;
+    transition: transform 0.2s;
+    cursor: pointer;
+    overflow: hidden;
+    background: var(--bg-surface);
+    box-shadow: var(--neu-flat-sm);
+}
+.atlas-week-event:hover {
+    transform: scale(1.02);
+    z-index: 10;
+}
+.atlas-week-event--completed { border-left-color: var(--status-completed); }
+.atlas-week-event--insession { border-left-color: var(--status-insession); box-shadow: 0 4px 15px rgba(0,229,255,0.15); }
+.atlas-week-event--booked { border-left-color: var(--status-booked); }
+.atlas-week-event--cancelled { border-left-color: var(--status-cancelled); opacity: 0.6; }
+
+.atlas-no-scrollbar::-webkit-scrollbar { display: none; }
+
+/* ---------- Month view ---------- */
+
+.atlas-month-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 12px;
+    height: 100%;
+}
+.atlas-month-day {
+    background: var(--bg-surface);
+    border-radius: 16px;
+    padding: 12px;
+    box-shadow: var(--neu-flat-sm);
+    border: var(--border-subtle);
+    min-height: 90px;
+    display: flex;
+    flex-direction: column;
+    transition: all 0.2s;
+    cursor: pointer;
+}
+.atlas-month-day.is-other-month { opacity: 0.25; }
+.atlas-month-day.is-today {
+    background: var(--bg-recessed);
+    box-shadow: var(--neu-inset-sm);
+    border-color: rgba(0, 229, 255, 0.2);
+}
+.atlas-month-day-num { font-size: 14px; font-weight: 600; margin-bottom: 8px; }
+.atlas-month-day.is-today .atlas-month-day-num { color: var(--accent); }
+.atlas-month-chip {
+    height: 4px; border-radius: 2px; width: 100%; margin-bottom: 2px;
+}
+.atlas-month-chip--completed { background: var(--status-completed); }
+.atlas-month-chip--insession { background: var(--status-insession); box-shadow: 0 0 6px var(--accent-glow); }
+.atlas-month-chip--booked { background: var(--status-booked); }
+.atlas-month-chip--cancelled { background: var(--status-cancelled); }
+
+.atlas-today-strip {
+    background: var(--bg-recessed);
+    border-radius: 24px;
+    padding: 16px 24px;
+    box-shadow: var(--neu-inset);
+    display: flex;
+    gap: 20px;
+    align-items: center;
+    overflow-x: auto;
+}
+.atlas-today-item {
+    padding: 8px 16px;
+    background: var(--bg-surface);
+    border-radius: 14px;
+    box-shadow: var(--neu-flat-sm);
+    border: var(--border-subtle);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-shrink: 0;
+}
+
+/* =====================================================================
+   Motion · ported from Twilight (Helios booking + Apple-style page enter)
+   - Page change: current view fades down 8px and out (0.22s), next view
+     rises 18px and fades in (0.68s, --ease-out).
+   - Lists and grids: one-shot staggered rise on first render.
+   - Raised controls: hover deepens the shadow, press sinks into an inset
+     well and scales slightly; selection settles over 0.5s (--ease-ui).
+   - Everything collapses to instant under prefers-reduced-motion.
+   ===================================================================== */
+
+:root {
+    --ease-out: cubic-bezier(0.16, 1, 0.3, 1);      /* Twilight --apple-ease */
+    --ease-ui: cubic-bezier(0.23, 1, 0.32, 1);      /* Twilight --bk-ease */
+    --ease-sheet: cubic-bezier(0.32, 0.72, 0, 1);   /* Twilight sheets and toasts */
+    --page-ms: 0.68s;
+    --ui-ms: 0.5s;
+    --press-ms: 0.1s;
+    --neu-hover-sm: 8px 8px 16px var(--shadow-dark), -5px -5px 14px var(--shadow-light);
+    --neu-press: inset 3px 3px 6px var(--shadow-darker), inset -2px -2px 6px var(--shadow-light);
+}
+
+/* Keyframes declare only `from`, so each element settles on its own resting
+   opacity/transform (e.g. a cancelled card stays at 60%). */
+@keyframes viewEnter { from { opacity: 0; transform: translate3d(0, 18px, 0); } }
+@keyframes viewLeave { to { opacity: 0; transform: translate3d(0, 8px, 0); } }
+@keyframes atlas-rise { from { opacity: 0; transform: translate3d(0, 8px, 0); } }
+@keyframes atlas-pop { from { opacity: 0; transform: translateY(10px) scale(0.96); } }
+@keyframes slideFromRight { from { opacity: 0; transform: translate3d(24px, 0, 0); } }
+@keyframes slideFromLeft { from { opacity: 0; transform: translate3d(-24px, 0, 0); } }
+@keyframes atlas-shake {
+    0%, 100% { transform: translateX(0); }
+    20%, 60% { transform: translateX(-6px); }
+    40%, 80% { transform: translateX(6px); }
+}
+@keyframes spinOnce { to { transform: rotate(90deg); } }
+
+.atlas-page-enter { animation: viewEnter var(--page-ms) var(--ease-out) backwards; }
+.atlas-page-leave {
+    animation: viewLeave 0.22s var(--ease-ui) forwards;
+    pointer-events: none;
+}
+/* `backwards` hands control back to hover/press transforms once finished. */
+.atlas-rise { animation: atlas-rise 0.45s var(--ease-ui) backwards; }
+.atlas-pop { animation: atlas-pop 0.34s var(--ease-ui) backwards; }
+.atlas-slide-next { animation: slideFromRight var(--ui-ms) var(--ease-ui) backwards; }
+.atlas-slide-prev { animation: slideFromLeft var(--ui-ms) var(--ease-ui) backwards; }
+.atlas-shake { animation: atlas-shake 0.4s ease; }
+
+/* ---------- Raised controls: hover lift, press-in, settle ---------- */
+
+.atlas-rail-item,
+.atlas-view-tab,
+.atlas-date-chip,
+.atlas-team-option,
+.atlas-icon-btn,
+.atlas-month-day,
+.atlas-today-item,
+.atlas-week-event,
+.atlas-map-zoom {
+    transition: transform var(--ui-ms) var(--ease-ui),
+                box-shadow var(--ui-ms) var(--ease-ui),
+                background var(--ui-ms) var(--ease-ui),
+                background-color var(--ui-ms) var(--ease-ui),
+                border-color var(--ui-ms) var(--ease-ui),
+                color var(--ui-ms) var(--ease-ui),
+                opacity var(--ui-ms) var(--ease-ui);
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+}
+
+.atlas-rail-item:hover { color: var(--text-primary); }
+.atlas-rail-item.is-active:hover { color: var(--accent); }
+
+.atlas-view-tab:not(.is-active):hover,
+.atlas-date-chip:not(.is-active):hover,
+.atlas-team-option:not(.is-active):hover,
+.atlas-icon-btn:hover,
+.atlas-month-day:not(.is-today):not(.is-selected):hover,
+.atlas-today-item:hover {
+    box-shadow: var(--neu-hover-sm);
+}
+.atlas-view-tab:not(.is-active):hover .atlas-eyebrow,
+.atlas-icon-btn:hover { color: var(--text-primary); }
+.atlas-team-option:not(.is-active):hover .atlas-team-name { color: var(--text-primary); }
+.atlas-month-day.is-other-month:hover { opacity: 0.45; }
+
+.atlas-rail-item:active,
+.atlas-view-tab:active,
+.atlas-date-chip:active,
+.atlas-team-option:active,
+.atlas-icon-btn:active,
+.atlas-month-day:active,
+.atlas-today-item:active {
+    transform: scale(0.97);
+    box-shadow: var(--neu-press);
+    transition-duration: var(--press-ms);
+}
+.atlas-week-event:active { transform: scale(0.98); transition-duration: var(--press-ms); }
+
+.atlas-btn-primary {
+    transition: transform var(--ui-ms) var(--ease-ui),
+                box-shadow var(--ui-ms) var(--ease-ui),
+                background-color var(--ui-ms) var(--ease-ui);
+}
+.atlas-btn-primary:hover { box-shadow: 0 10px 30px var(--accent-glow); background-color: #33EBFF; }
+.atlas-btn-primary:active {
+    transform: scale(0.98);
+    background-color: var(--accent-hover);
+    box-shadow: 0 4px 12px var(--accent-glow);
+    transition-duration: var(--press-ms);
+}
+
+.atlas-session-card { transition: transform var(--ui-ms) var(--ease-ui), box-shadow var(--ui-ms) var(--ease-ui); }
+.atlas-session-card:hover { box-shadow: var(--neu-hover-sm); }
+
+.atlas-month-day.is-selected {
+    background: var(--bg-recessed);
+    box-shadow: var(--neu-inset-sm);
+}
+
+.atlas-link { transition: color var(--ui-ms) var(--ease-ui), opacity var(--ui-ms) var(--ease-ui); }
+.atlas-link:hover { opacity: 0.75; }
+
+.atlas-team-check svg { transition: transform var(--ui-ms) var(--ease-ui); transform: scale(0.6); }
+.atlas-team-option.is-active .atlas-team-check svg { transform: scale(1); }
+
+.atlas-spin-once svg { animation: spinOnce 0.4s var(--ease-ui); }
+
+/* Keyboard focus, as in Twilight: accent outline offset from the control. */
+[role="button"]:focus-visible,
+button:focus-visible,
+a:focus-visible,
+input:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+.atlas-input { transition: box-shadow var(--ui-ms) var(--ease-ui); }
+.atlas-input:focus { box-shadow: var(--neu-inset-sm), 0 0 0 1px rgba(0, 229, 255, 0.35); }
+.atlas-input:focus-visible { outline: none; }
+
+/* Route map zoom */
+.atlas-route-map { transition: transform var(--ui-ms) var(--ease-ui); transform-origin: 79.5% 27.6%; }
+
+/* ---------- Toast ---------- */
+
+.atlas-toast {
+    position: fixed;
+    left: 50%;
+    bottom: 32px;
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 22px;
+    border-radius: 18px;
+    background: var(--bg-surface);
+    color: var(--text-primary);
+    font-size: 14px;
+    font-weight: 500;
+    border: 1px solid rgba(0, 229, 255, 0.2);
+    box-shadow: 12px 12px 28px var(--shadow-darker), -6px -6px 18px var(--shadow-light);
+    opacity: 0;
+    transform: translateX(-50%) translateY(60px);
+    transition: opacity 0.3s ease, transform 0.3s var(--ease-sheet);
+    pointer-events: none;
+}
+.atlas-toast.atlas-toast--error { border-color: rgba(239, 68, 68, 0.35); }
+.atlas-toast.is-show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-delay: 0ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
+/* =====================================================================
+   Atlas layout classes
+   Every element has one Atlas name; its layout utilities live here.
+   These rules come after the shared classes above, so (as in the design,
+   where Tailwind loaded last) an element's own colour or size wins over
+   a shared class like .atlas-eyebrow.
+   ===================================================================== */
+
+/* ---------- App shell ---------- */
+.atlas-app { @apply w-screen h-screen flex; }
+
+.atlas-sidebar { @apply w-24 flex-shrink-0 m-6 rounded-[32px] flex flex-col items-center py-8 justify-between z-20; }
+.atlas-sidebar-brand { @apply flex flex-col items-center gap-2; }
+.atlas-sidebar-logo { @apply w-14 h-14 rounded-full flex items-center justify-center text-[var(--accent)]; }
+.atlas-sidebar-nav,
+.atlas-sidebar-footer { @apply flex flex-col gap-6; }
+.atlas-sidebar-avatar {
+    @apply w-10 h-10 rounded-full bg-cover;
+    background-image: url('https://api.dicebear.com/7.x/avataaars/svg?seed=Atlas');
+}
+
+.atlas-view-switch { @apply flex gap-2 p-1 rounded-full bg-[var(--bg-surface)]; }
+.atlas-view-switch--recessed { @apply bg-[var(--bg-recessed)]; }
+.atlas-view-tab-label--wide { @apply !tracking-widest; }
+
+.atlas-legend { @apply text-[var(--text-secondary)] text-sm flex items-center gap-3; font-family: var(--font-sans); }
+.atlas-legend--wide { @apply gap-4; }
+.atlas-legend-item { @apply flex items-center gap-1.5; }
+.atlas-pulse { @apply animate-pulse; }
+
+/* Day and Week share the dark schedule panel on the right. */
+.atlas-schedule-panel { @apply flex-1 flex flex-col h-full bg-[var(--bg-main)] rounded-[32px] border border-[rgba(255,255,255,0.02)] overflow-hidden shadow-[-10px_0_30px_rgba(0,0,0,0.3)]; }
+
+/* ---------- Day view ---------- */
+.atlas-day-main { @apply flex-1 flex gap-8 p-6 pl-0 h-full overflow-hidden; }
+.atlas-day-side { @apply w-[464px] flex flex-col gap-8 h-full flex-shrink-0; }
+.atlas-schedule-header { @apply p-8 pb-4 flex justify-between items-end border-b border-[rgba(255,255,255,0.02)]; }
+.atlas-schedule-title { @apply text-3xl font-medium mb-2; font-family: var(--font-serif); }
+.atlas-session-list { @apply flex-1 overflow-y-auto p-8 flex flex-col gap-6; }
+.atlas-session-list-date { @apply text-[var(--text-muted)] border-b border-[rgba(255,255,255,0.02)] pb-2; }
+
+/* Live session card (top left) */
+.atlas-live-card { @apply rounded-[32px] p-6 flex flex-col relative overflow-hidden flex-shrink-0; }
+.atlas-live-card-body { @apply rounded-[24px] p-8 flex flex-col items-center relative overflow-hidden; }
+.atlas-live-card-arcs { @apply absolute inset-0 opacity-20 pointer-events-none; }
+.atlas-live-card-status { @apply text-center mb-8 z-10 flex items-center gap-2; }
+.atlas-live-card-name { @apply text-4xl text-center mb-2 z-10; font-family: var(--font-serif); }
+.atlas-live-card-time { @apply text-[15px] text-[var(--text-secondary)] text-center mb-8 z-10; font-family: var(--font-sans); }
+.atlas-live-card-details { @apply flex w-full justify-between px-4 z-10 border-t border-[rgba(255,255,255,0.05)] pt-6; }
+.atlas-live-card-detail { @apply flex flex-col gap-1.5; }
+.atlas-live-card-detail--end { @apply text-right; }
+.atlas-live-card-value { @apply text-[13px]; font-family: var(--font-sans); }
+
+/* Route map inside the live card */
+.atlas-route-map-frame { @apply z-10 mb-8 w-full relative rounded-[20px] overflow-hidden h-[180px]; }
+.atlas-route-map { @apply absolute inset-0 w-full h-full; }
+.atlas-route-eta {
+    @apply absolute left-3 top-3 px-2.5 py-1.5 rounded-lg font-semibold uppercase;
+    background: rgba(0, 229, 255, 0.12);
+    color: var(--accent);
+    border: 1px solid rgba(0, 229, 255, 0.25);
+    font-size: 9px;
+    letter-spacing: 0.12em;
+}
+.atlas-route-zoom,
+.atlas-route-address {
+    background: rgba(26, 28, 30, 0.92);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+}
+.atlas-route-zoom { @apply absolute right-3 top-3 flex flex-col rounded-lg overflow-hidden; }
+.atlas-map-zoom { @apply w-7 h-7 flex items-center justify-center text-[var(--text-secondary)] text-base cursor-pointer hover:text-[var(--text-primary)] active:bg-[rgba(255,255,255,0.04)]; }
+.atlas-map-zoom--in { border-bottom: 1px solid rgba(255, 255, 255, 0.06); }
+.atlas-map-zoom--disabled { @apply opacity-40; }
+.atlas-route-address { @apply absolute left-3 bottom-3 flex items-center gap-2 px-3 py-2 rounded-xl; box-shadow: 6px 6px 14px rgba(0, 0, 0, 0.5); }
+.atlas-route-address-text { @apply text-[12px] font-medium; color: var(--text-primary); }
+
+/* New Booking panel */
+.atlas-booking { @apply rounded-[32px] p-6 flex flex-col flex-1 min-h-0 overflow-y-auto; }
+.atlas-booking-head { @apply flex justify-between items-center mb-6; }
+.atlas-booking-title { @apply font-semibold text-lg; font-family: var(--font-sans); }
+.atlas-booking-reset { @apply w-8 h-8 rounded-full flex items-center justify-center text-[var(--text-secondary)] cursor-pointer hover:text-[var(--text-primary)]; }
+.atlas-booking-week { @apply mb-6; }
+.atlas-booking-week-head { @apply flex justify-between items-center mb-4; }
+.atlas-booking-range { @apply text-sm font-semibold text-[var(--text-secondary)]; }
+.atlas-booking-week-nav { @apply flex gap-2; }
+.atlas-booking-week-btn { @apply w-7 h-7 rounded-lg flex items-center justify-center text-[var(--text-secondary)] hover:text-white; }
+.atlas-date-strip { @apply flex gap-3 overflow-x-auto -mx-3 -mt-3 -mb-2 px-3 pt-3 pb-4; }
+.atlas-date-chip { @apply flex-shrink-0; }
+.atlas-date-chip:not(.is-active) .atlas-date-chip-dow { @apply text-[var(--text-secondary)]; }
+.atlas-booking-times { @apply flex gap-4 mb-6; }
+.atlas-time-field { @apply flex-1 flex flex-col gap-2; }
+.atlas-time-input-wrap { @apply relative; }
+.atlas-time-icon { @apply absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-secondary)] pointer-events-none; }
+.atlas-booking-teams { @apply mb-8; }
+.atlas-booking-teams-head { @apply flex justify-between items-center mb-4; }
+.atlas-team-create { @apply text-[10px] text-[var(--accent)] font-semibold cursor-pointer; }
+.atlas-team-list { @apply flex flex-col gap-3; }
+.atlas-team-name { @apply text-sm font-medium; }
+.atlas-team-option:not(.is-active) .atlas-team-name { @apply text-[var(--text-secondary)]; }
+.atlas-booking-footer { @apply mt-auto pt-4; }
+
+/* Session cards (schedule list) */
+.atlas-session-time { @apply flex flex-col justify-between items-center w-20 flex-shrink-0 border-r border-[rgba(255,255,255,0.05)] pr-6; }
+.atlas-session-start { @apply text-lg font-medium; font-family: var(--font-sans); }
+.atlas-session-end { @apply text-[11px] text-[var(--text-secondary)] font-mono; }
+.atlas-session-info { @apply flex-1 flex flex-col justify-center; }
+.atlas-session-status { @apply flex items-center gap-2 mb-1; }
+.atlas-session-client { @apply text-2xl mb-2; font-family: var(--font-serif); }
+.atlas-session-meta { @apply flex items-center gap-4 text-sm text-[var(--text-secondary)]; }
+.atlas-session-location { @apply flex items-center gap-1.5; }
+.atlas-session-pin { @apply w-4 h-4; }
+.atlas-session-team { @apply flex flex-col items-end justify-center w-32 border-l border-[rgba(255,255,255,0.05)] pl-6; }
+.atlas-session-team-label { @apply mb-2; }
+.atlas-session-team-badge { @apply px-3 py-1.5 rounded-lg bg-[var(--bg-recessed)] text-[var(--text-secondary)] text-xs font-semibold shadow-inner; }
+.atlas-session-glow { @apply absolute inset-0 bg-gradient-to-r from-[rgba(0,229,255,0.05)] to-transparent pointer-events-none; }
+
+.atlas-session-card--completed .atlas-session-client { @apply text-[var(--text-secondary)]; }
+
+.atlas-session-card--cancelled { @apply opacity-60; }
+.atlas-session-card--cancelled .atlas-session-start { @apply text-[var(--text-secondary)] line-through; }
+.atlas-session-card--cancelled .atlas-session-end,
+.atlas-session-card--cancelled .atlas-session-client,
+.atlas-session-card--cancelled .atlas-session-meta,
+.atlas-session-card--cancelled .atlas-session-team-badge { @apply text-[var(--text-muted)]; }
+.atlas-session-card--cancelled .atlas-session-status-label { @apply text-[var(--status-cancelled)]; }
+
+.atlas-session-card--insession .atlas-session-time,
+.atlas-session-card--insession .atlas-session-info,
+.atlas-session-card--insession .atlas-session-team { @apply relative z-10; }
+.atlas-session-card--insession .atlas-session-time { @apply border-[rgba(255,255,255,0.1)]; }
+.atlas-session-card--insession .atlas-session-team { @apply border-[rgba(255,255,255,0.1)]; }
+.atlas-session-card--insession .atlas-session-start { @apply font-bold text-[var(--accent)]; }
+.atlas-session-card--insession .atlas-session-status-label,
+.atlas-session-card--insession .atlas-session-pin,
+.atlas-session-card--insession .atlas-session-team-label { @apply text-[var(--accent)]; }
+.atlas-session-card--insession .atlas-session-client { @apply text-3xl text-white; }
+.atlas-session-card--insession .atlas-session-meta { @apply text-[var(--text-primary)]; }
+.atlas-session-card--insession .atlas-session-team-badge { @apply text-[var(--accent)] border border-[rgba(0,229,255,0.2)] shadow-[inset_0_2px_8px_rgba(0,0,0,0.5)]; }
+
+/* ---------- Week view ---------- */
+.atlas-week-main { @apply flex-1 flex flex-col p-6 pl-0 overflow-hidden h-full; }
+.atlas-timeline-header { @apply p-8 flex justify-between items-end border-b border-[rgba(255,255,255,0.02)]; }
+.atlas-timeline-title-row { @apply flex items-center gap-4 mb-2; }
+.atlas-timeline-title { @apply text-3xl font-medium; font-family: var(--font-serif); }
+.atlas-week-range { @apply px-3 py-1 rounded-lg text-[var(--accent)] text-xs font-semibold tracking-wider; }
+.atlas-week-scroll { @apply flex-1 overflow-y-auto; }
+
+.atlas-week-day-head--today { @apply bg-[rgba(0,229,255,0.02)]; }
+.atlas-week-day-name { @apply text-[var(--text-muted)]; }
+.atlas-week-day-num { @apply text-xl font-semibold mt-1; }
+.atlas-week-day-head--today .atlas-week-day-name,
+.atlas-week-day-head--today .atlas-week-day-num { @apply text-[var(--accent)]; }
+
+.atlas-week-event--insession { @apply z-10; }
+.atlas-week-event-status { @apply flex items-center gap-1.5 mb-1; }
+.atlas-week-event-label { @apply !text-[9px]; }
+.atlas-week-event--insession .atlas-week-event-label { @apply !text-[var(--accent)]; }
+.atlas-week-event-client { @apply font-semibold text-white truncate; }
+.atlas-week-event-time { @apply text-[9px] text-[var(--text-secondary)]; }
+.atlas-week-event-team { @apply mt-2 inline-block px-1.5 py-0.5 rounded bg-[var(--bg-recessed)] text-[8px] font-bold text-[var(--text-muted)]; }
+.atlas-week-event--cancelled .atlas-week-event-client { @apply text-[var(--text-muted)] line-through; }
+.atlas-week-event--cancelled .atlas-week-event-time { @apply text-[var(--text-muted)]; }
+.atlas-week-event--insession .atlas-week-event-time { @apply text-[var(--accent)]; }
+.atlas-week-event--insession .atlas-week-event-team { @apply text-[var(--accent)] border border-[rgba(0,229,255,0.2)]; }
+
+/* ---------- Month view ---------- */
+.atlas-month-main { @apply flex-1 p-6 pl-0 h-full flex flex-col gap-6 overflow-hidden; }
+.atlas-month-header { @apply rounded-[32px] p-8 flex justify-between items-end flex-shrink-0; }
+.atlas-month-title-row { @apply flex items-center gap-4 mb-2; }
+.atlas-month-title { @apply text-4xl font-medium; font-family: var(--font-serif); }
+.atlas-month-nav { @apply flex gap-2; }
+.atlas-month-nav-btn { @apply w-8 h-8 rounded-lg flex items-center justify-center text-[var(--text-secondary)] hover:text-white; }
+
+.atlas-today { @apply flex flex-col gap-3; }
+.atlas-today-head { @apply flex justify-between items-center px-4; }
+.atlas-today-title { @apply !text-[var(--accent)]; }
+.atlas-today-link { @apply text-xs text-[var(--text-muted)] cursor-pointer hover:text-[var(--text-secondary)]; }
+.atlas-today-item { @apply cursor-pointer; }
+.atlas-today-item--live { border-color: rgba(0, 229, 255, 0.3); }
+.atlas-today-text { @apply flex flex-col; }
+.atlas-today-client { @apply text-[13px] font-semibold; }
+.atlas-today-meta { @apply text-[10px] text-[var(--text-secondary)] uppercase tracking-wider; }
+.atlas-today-item--live .atlas-today-client { @apply text-white; }
+.atlas-today-item--live .atlas-today-meta { @apply text-[var(--accent)] font-bold; }
+
+.atlas-month { @apply flex-1 min-h-0; }
+.atlas-month-weekdays { @apply grid grid-cols-7 gap-4 mb-4 px-2; }
+.atlas-month-weekday { @apply text-center; }
