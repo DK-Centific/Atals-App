@@ -34,7 +34,6 @@ export default function WeekGrid({ sessions, weekDate = TODAY }) {
   const inWeek = sessions.filter((s) => s.date >= week[0].date && s.date <= week[6].date)
   const delay = useStagger(
     [...inWeek].sort((a, b) => toMinutes(a.start) - toMinutes(b.start)).map((s) => s.id),
-    70,
   )
   const lanes = new Map()
   week.forEach((d) => {

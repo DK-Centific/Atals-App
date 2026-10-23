@@ -8,6 +8,7 @@ import BookingMenu from './components/booking/BookingMenu.jsx'
 
 const TITLES = {
   '/day': 'Atlas Scheduling | Desktop',
+  '/day/map': 'Atlas Scheduling | Map View',
   '/week': 'Atlas Scheduling | Week View',
   '/month': 'Atlas Scheduling | Month View',
 }
@@ -23,7 +24,7 @@ export default function App() {
     <>
       <Routes>
         <Route path="/" element={<Navigate to="/day" replace />} />
-        <Route path="/day" element={<DayView />} />
+        <Route path="/day/*" element={<DayView />} />
         <Route path="/week" element={<WeekView />} />
         <Route path="/month" element={<MonthView />} />
         <Route path="*" element={<Navigate to="/day" replace />} />

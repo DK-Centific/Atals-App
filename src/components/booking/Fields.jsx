@@ -1,5 +1,4 @@
 import { TEAMS } from '../../data/schedule.js'
-import { pressProps } from '../../motion/motion.js'
 import { CheckIcon, ClockIcon } from '../Icons.jsx'
 
 // Form fields shared by the New Booking panel and the booking details panel.
@@ -49,16 +48,18 @@ export function TeamPicker({ value, onChange }) {
       {TEAMS.map((t) => {
         const active = t.id === value
         return (
-          <div
+          <button
             key={t.id}
+            type="button"
+            role="radio"
             className={`atlas-team-option${active ? ' is-active' : ''}`}
-            aria-pressed={active}
-            {...pressProps(() => onChange(t.id), t.name)}
+            aria-checked={active}
+            onClick={() => onChange(t.id)}
           >
-            <div className="atlas-team-badge">{t.code}</div>
+            <span className="atlas-team-badge">{t.code}</span>
             <span className="atlas-team-name">{t.name}</span>
-            <div className="atlas-team-check"><CheckIcon /></div>
-          </div>
+            <span className="atlas-team-check"><CheckIcon /></span>
+          </button>
         )
       })}
     </div>

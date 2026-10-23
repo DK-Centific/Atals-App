@@ -4,12 +4,16 @@ import { longDayLabel } from '../../lib/dates.js'
 import {
   checkDetails, checkTimes, conflictMessage, displayNames, findConflict, isLocked, slotLabel,
 } from '../../lib/bookings.js'
+import { MS, prefersReducedMotion } from '../../motion/motion.js'
+import usePresence from '../../motion/usePresence.js'
+import useAutoDismiss from '../../motion/useAutoDismiss.js'
+import useFocusTrap, { returnFocus } from '../../motion/useFocusTrap.js'
 import { useToast } from '../../motion/Toast.jsx'
+import { useMatches } from '../../state/FilterContext.jsx'
 import { sessionsOn, useBookingTriggers, useSchedule } from '../../state/ScheduleContext.jsx'
+import { CloseIcon } from '../Icons.jsx'
 import { StatusDot } from '../StatusLegend.jsx'
 import { TeamPicker, TextField, TimeField } from './Fields.jsx'
-
-const CLOSE_MS = 360 // matches the sheet transition in index.css
 
 const PILL_CLASS = {
   completed: 'atlas-status-pill atlas-status-pill--completed',
@@ -20,23 +24,29 @@ const PILL_CLASS = {
 
 const TITLES = { edit: 'Edit booking', reschedule: 'Reschedule', cancel: 'Cancel booking' }
 
-// Side sheet for one booking (view, edit, reschedule, cancel) or one day's bookings.
-// It stays mounted for a moment after closing so it can slide away.
+// Side drawer for one booking (view, edit, reschedule, cancel) or one day's bookings.
+// It slides in from the right (a bottom sheet on phones), keeps showing the last
+// record while it slides out, then unmounts. Tab stays inside while it is open,
+// and focus goes back to the card that opened it.
 export default function BookingDrawer() {
-  const { panel, closePanel, sessions } = useSchedule()
-  const [shown, setShown] = useState(null)
-  const [visible, setVisible] = useState(false)
+  const { panel, closePanel, sessions, triggerRef } = useSchedule()
+  // Keep showing the last record while the drawer slides out.
+  const last = useRef(panel)
+  if (panel) last.current = panel
+  const shown = last.current
+  const { mounted, state, onAnimationEnd } = usePresence(Boolean(panel), MS.sheetExit)
+  const sheetRef = useRef(null)
+  const closedByOutside = useRef(false)
+  const wasOpen = useRef(false)
 
   useEffect(() => {
-    if (panel) {
-      setShown(panel)
-      const raf = requestAnimationFrame(() => requestAnimationFrame(() => setVisible(true)))
-      return () => cancelAnimationFrame(raf)
+    if (panel) { wasOpen.current = true; closedByOutside.current = false; return undefined }
+    if (wasOpen.current) {
+      wasOpen.current = false
+      if (!closedByOutside.current) returnFocus(triggerRef.current)
     }
-    setVisible(false)
-    const t = setTimeout(() => setShown(null), CLOSE_MS)
-    return () => clearTimeout(t)
-  }, [panel])
+    return undefined
+  }, [panel, triggerRef])
 
   useEffect(() => {
     if (!panel) return undefined
@@ -45,21 +55,35 @@ export default function BookingDrawer() {
     return () => document.removeEventListener('keydown', onKey)
   }, [panel, closePanel])
 
-  if (!shown) return null
+  useFocusTrap(sheetRef, Boolean(panel) && mounted)
+
+  if (!mounted || !shown) return null
   const session = shown.id ? sessions.find((s) => s.id === shown.id) : null
 
   return (
-    <div className={`atlas-sheet-layer${visible ? ' is-show' : ''}`}>
-      <div className="atlas-sheet-scrim" onClick={closePanel} />
+    <div className="atlas-sheet-layer" data-state={state}>
+      <div className="atlas-sheet-scrim" onClick={() => { closedByOutside.current = true; closePanel() }} />
       <aside
+        ref={sheetRef}
         className="atlas-sheet atlas-raised"
+        data-state={state}
         role="dialog"
         aria-modal="true"
         aria-label={session ? `Booking: ${session.name}` : 'Bookings for the day'}
+        onAnimationEnd={onAnimationEnd}
       >
+        <div className="atlas-sheet-grab" aria-hidden="true" />
         {session
-          ? <BookingSheet key={`${session.id}-${shown.mode}`} session={session} mode={shown.mode} />
-          : shown.date && <DaySheet date={shown.date} />}
+          ? (
+            <div key={`${session.id}-${shown.mode}`} className="atlas-sheet-content atlas-swap-in">
+              <BookingSheet session={session} mode={shown.mode} />
+            </div>
+          )
+          : shown.date && (
+            <div key={shown.date} className="atlas-sheet-content atlas-swap-in">
+              <DaySheet date={shown.date} />
+            </div>
+          )}
       </aside>
     </div>
   )
@@ -68,7 +92,14 @@ export default function BookingDrawer() {
 function SheetHead({ eyebrow, title, children }) {
   const { closePanel } = useSchedule()
   const closeRef = useRef(null)
-  useEffect(() => { closeRef.current?.focus({ preventScroll: true }) }, [])
+  // Focus moves in once the sheet is on screen (next frame), unless a field took it.
+  useEffect(() => {
+    const raf = requestAnimationFrame(() => {
+      const sheet = closeRef.current?.closest('.atlas-sheet')
+      if (sheet && !sheet.contains(document.activeElement)) closeRef.current.focus({ preventScroll: true })
+    })
+    return () => cancelAnimationFrame(raf)
+  }, [])
   return (
     <header className="atlas-sheet-head">
       <div className="atlas-sheet-head-text">
@@ -76,17 +107,62 @@ function SheetHead({ eyebrow, title, children }) {
         <h2 className="atlas-sheet-title">{title}</h2>
         {children}
       </div>
-      <button ref={closeRef} className="atlas-sheet-close atlas-icon-btn atlas-raised-sm" aria-label="Close" onClick={closePanel}>
-        <svg width="13" height="13" viewBox="0 0 14 14" fill="none">
-          <path d="M3 3l8 8M11 3l-8 8" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-        </svg>
+      <button ref={closeRef} type="button" className="atlas-sheet-close atlas-icon-btn atlas-raised-sm" aria-label="Close" onClick={closePanel}>
+        <CloseIcon />
       </button>
     </header>
   )
 }
 
+// Inline "Saved: ..." note with Undo after a change (spec section 7). It fades in
+// and out in place (180ms), stays 6s, and pauses while hovered or focused.
+function SavedNote({ sessionId }) {
+  const { note, clearNote, setNote, closePanel } = useSchedule()
+  const [leaving, setLeaving] = useState(false)
+  const mine = note && note.id === sessionId ? note : null
+  const key = mine ? `${mine.text}` : null
+
+  useEffect(() => { setLeaving(false) }, [key])
+
+  const dismiss = () => {
+    if (prefersReducedMotion()) clearNote()
+    else setLeaving(true)
+  }
+  const hold = useAutoDismiss(dismiss, leaving ? null : key)
+  if (!mine) return null
+
+  const undo = () => {
+    mine.undo()
+    if (mine.closes) {
+      clearNote()
+      closePanel()
+    } else {
+      setNote({ id: mine.id, text: 'Change undone', undo: null })
+    }
+  }
+
+  return (
+    <div
+      key={key}
+      className="atlas-saved-note"
+      data-state={leaving ? 'closing' : 'open'}
+      role="status"
+      aria-live="polite"
+      onAnimationEnd={(e) => { if (leaving && e.target === e.currentTarget) clearNote() }}
+      {...hold}
+    >
+      <span className="atlas-saved-note-text">
+        {mine.undo ? 'Saved: ' : ''}{mine.text}
+      </span>
+      {mine.undo && (
+        <button type="button" className="atlas-link atlas-saved-note-undo" onClick={undo}>Undo</button>
+      )}
+    </div>
+  )
+}
+
 const StatusPill = ({ status }) => (
-  <span className={PILL_CLASS[status]}>
+  <span key={status} className={`${PILL_CLASS[status]} atlas-status-line`}>
     <StatusDot status={status} pulse={status === 'insession'} />
     {STATUS[status].label}
   </span>
@@ -104,7 +180,7 @@ function BookingSheet({ session, mode }) {
 /* ---------- View ---------- */
 
 function BookingDetails({ session: s }) {
-  const { openBooking, startSession, completeSession, sessions } = useSchedule()
+  const { openBooking, startSession, completeSession, restoreSession, setNote, sessions } = useSchedule()
   const toast = useToast()
   const locked = isLocked(s.status)
   const team = TEAMS.find((t) => t.id === s.team)
@@ -113,12 +189,12 @@ function BookingDetails({ session: s }) {
     const live = sessions.find((o) => o.status === 'insession' && o.id !== s.id)
     if (live) return toast(`Finish ${live.name}’s session first.`, 'error')
     startSession(s.id)
-    toast(`${s.name} is now in session`)
+    setNote({ id: s.id, text: 'In session', undo: () => restoreSession(s) })
   }
 
   const complete = () => {
     completeSession(s.id)
-    toast(`${s.name} marked completed`)
+    setNote({ id: s.id, text: 'Completed', undo: () => restoreSession(s) })
   }
 
   return (
@@ -128,6 +204,7 @@ function BookingDetails({ session: s }) {
         {s.rescheduledFrom && (
           <div className="atlas-sheet-note">Rescheduled from {slotLabel(s.rescheduledFrom)}</div>
         )}
+        <SavedNote sessionId={s.id} />
       </SheetHead>
 
       <div className="atlas-sheet-body">
@@ -167,17 +244,17 @@ function BookingDetails({ session: s }) {
         ) : (
           <>
             {s.status === 'booked' && s.date === TODAY && (
-              <button className="atlas-btn-primary" onClick={start}>Start session</button>
+              <button type="button" className="atlas-btn-primary" onClick={start}>Start session</button>
             )}
             {s.status === 'insession' && (
-              <button className="atlas-btn-primary" onClick={complete}>Mark completed</button>
+              <button type="button" className="atlas-btn-primary" onClick={complete}>Mark completed</button>
             )}
             <div className="atlas-sheet-actions">
-              <button className="atlas-btn-ghost" onClick={() => openBooking(s.id, 'edit')}>Edit</button>
+              <button type="button" className="atlas-btn-ghost" onClick={() => openBooking(s.id, 'edit')}>Edit</button>
               {s.status === 'booked' && (
-                <button className="atlas-btn-ghost" onClick={() => openBooking(s.id, 'reschedule')}>Reschedule</button>
+                <button type="button" className="atlas-btn-ghost" onClick={() => openBooking(s.id, 'reschedule')}>Reschedule</button>
               )}
-              <button className="atlas-btn-danger" onClick={() => openBooking(s.id, 'cancel')}>Cancel</button>
+              <button type="button" className="atlas-btn-danger" onClick={() => openBooking(s.id, 'cancel')}>Cancel</button>
             </div>
           </>
         )}
@@ -205,7 +282,7 @@ function Activity({ session }) {
       {history.length === 0 && <div className="atlas-activity-empty">Imported with the schedule.</div>}
       <ol className="atlas-activity-list">
         {history.map((h, i) => (
-          <li key={i} className="atlas-activity-item">
+          <li key={history.length - i} className="atlas-activity-item atlas-row-in" style={{ animationDelay: `${Math.min(i, 8) * MS.rowStep}ms` }}>
             <span className="atlas-activity-dot" />
             <div className="atlas-activity-text">
               <span className="atlas-activity-label">{h.text}</span>
@@ -223,7 +300,7 @@ function Activity({ session }) {
 /* ---------- Edit ---------- */
 
 function useFormSheet(session) {
-  const { openBooking } = useSchedule()
+  const { openBooking, restoreSession, setNote } = useSchedule()
   const toast = useToast()
   const [shakeKey, setShakeKey] = useState(0)
   const back = () => openBooking(session.id)
@@ -231,12 +308,18 @@ function useFormSheet(session) {
     setShakeKey((k) => k + 1)
     toast(message, 'error')
   }
-  return { back, fail, shakeKey, toast }
+  // Back to the details with an inline "Saved" note that can undo the change.
+  const saved = (text) => {
+    const before = session
+    setNote({ id: session.id, text, undo: () => restoreSession(before) })
+    back()
+  }
+  return { back, fail, saved, shakeKey }
 }
 
 function EditForm({ session }) {
   const { sessions, updateSession } = useSchedule()
-  const { back, fail, shakeKey, toast } = useFormSheet(session)
+  const { back, fail, saved, shakeKey } = useFormSheet(session)
   const [form, setForm] = useState({
     name: session.name, location: session.location ?? '', email: session.email ?? '',
     phone: session.phone ?? '', protocol: session.protocol ?? '', notes: session.notes ?? '', team: session.team,
@@ -256,8 +339,7 @@ function EditForm({ session }) {
       notes: form.notes.trim(),
       team: form.team,
     })
-    toast('Booking updated')
-    back()
+    saved('details updated')
   }
 
   return (
@@ -282,7 +364,7 @@ function EditForm({ session }) {
 
 function RescheduleForm({ session }) {
   const { sessions, rescheduleSession } = useSchedule()
-  const { back, fail, shakeKey, toast } = useFormSheet(session)
+  const { back, fail, saved, shakeKey } = useFormSheet(session)
   const [slot, setSlot] = useState({ date: session.date, start: session.start, end: session.end })
   const [reason, setReason] = useState('')
   const set = (patch) => setSlot((f) => ({ ...f, ...patch }))
@@ -295,8 +377,7 @@ function RescheduleForm({ session }) {
     const problem = checkTimes(slot) ?? (clash && conflictMessage(clash))
     if (problem) return fail(problem)
     rescheduleSession(session.id, slot, reason.trim())
-    toast(`Moved to ${slotLabel(slot)}`)
-    back()
+    saved(`moved to ${slotLabel(slot)}`)
   }
 
   return (
@@ -319,13 +400,12 @@ function RescheduleForm({ session }) {
 
 function CancelForm({ session }) {
   const { cancelSession } = useSchedule()
-  const { back, toast } = useFormSheet(session)
+  const { back, saved } = useFormSheet(session)
   const [reason, setReason] = useState('')
 
   const confirm = () => {
     cancelSession(session.id, reason.trim())
-    toast(`Cancelled ${session.name} · ${session.start}`, 'error')
-    back()
+    saved('cancelled')
   }
 
   return (
@@ -364,16 +444,17 @@ function FormShell({ session, mode, onBack, onSave, saveLabel, backLabel = 'Back
 
 function DaySheet({ date }) {
   const { sessions } = useSchedule()
+  const matches = useMatches()
   const triggers = useBookingTriggers()
-  const list = sessionsOn(sessions, date)
+  const list = sessionsOn(sessions, date).filter(matches)
 
   return (
     <>
       <SheetHead eyebrow={<span className="atlas-eyebrow">BOOKINGS</span>} title={longDayLabel(date)} />
       <div className="atlas-sheet-body">
         {list.length === 0 && <div className="atlas-activity-empty">No bookings on this day.</div>}
-        {list.map((s) => (
-          <div key={s.id} className="atlas-day-item atlas-rise" {...triggers(s)}>
+        {list.map((s, i) => (
+          <div key={s.id} className="atlas-day-item atlas-row-in" style={{ animationDelay: `${Math.min(i, 8) * MS.rowStep}ms` }} {...triggers(s)}>
             <StatusDot status={s.status} pulse={s.status === 'insession'} />
             <div className="atlas-day-item-text">
               <span className="atlas-day-item-name">{s.name}</span>

@@ -99,3 +99,17 @@ export const CheckIcon = () => (
     <polyline points="20 6 9 17 4 12" />
   </svg>
 )
+
+export const FilterIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
+    <line x1="4" y1="6" x2="20" y2="6" />
+    <line x1="7" y1="12" x2="17" y2="12" />
+    <line x1="10" y1="18" x2="14" y2="18" />
+  </svg>
+)
+
+export const CloseIcon = ({ size = 13 }) => (
+  <svg width={size} height={size} viewBox="0 0 14 14" fill="none" aria-hidden="true">
+    <path d="M3 3l8 8M11 3l-8 8" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+  </svg>
+)

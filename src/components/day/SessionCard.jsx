@@ -16,7 +16,7 @@ export default function SessionCard({ session, style }) {
   const triggers = useBookingTriggers()
 
   return (
-    <article className={`${CARD_CLASS[session.status]} atlas-rise`} style={style} {...triggers(session)} aria-label={`${session.name}, ${session.start} to ${session.end}`}>
+    <article className={`${CARD_CLASS[session.status]} atlas-row-in`} style={style} {...triggers(session)} aria-label={`${session.name}, ${session.start} to ${session.end}`}>
       {live && <div className="atlas-session-glow" />}
 
       <div className="atlas-session-time">
@@ -27,7 +27,7 @@ export default function SessionCard({ session, style }) {
       <div className="atlas-session-info">
         <div className="atlas-session-status">
           <StatusDot status={session.status} pulse={live} />
-          <span className="atlas-eyebrow atlas-session-status-label">{STATUS[session.status].dayLabel}</span>
+          <span key={session.status} className="atlas-eyebrow atlas-session-status-label atlas-status-line">{STATUS[session.status].dayLabel}</span>
         </div>
         <h3 className="atlas-session-client">{session.name}</h3>
         <div className="atlas-session-meta">
