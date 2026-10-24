@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { TEAMS, TODAY, teamShort } from '../../data/schedule.js'
 import { addDays, longDayLabel, weekOf, weekRangeLabel } from '../../lib/dates.js'
 import { checkDetails, checkTimes, conflictMessage, displayNames, findConflict } from '../../lib/bookings.js'
@@ -6,17 +6,22 @@ import Collapse from '../../motion/Collapse.jsx'
 import useSlidingPill from '../../motion/useSlidingPill.js'
 import { useToast } from '../../motion/Toast.jsx'
 import { useSchedule } from '../../state/ScheduleContext.jsx'
+import { useQueue } from '../../state/ParticipantContext.jsx'
+import { formatMiles } from '../../lib/geo.js'
 import { PlusIcon } from '../Icons.jsx'
 import { TeamPicker, TextField, TimeField } from '../booking/Fields.jsx'
 
 const DEFAULTS = {
   date: TODAY, start: '17:00', end: '19:00', team: TEAMS[0].id,
-  name: '', location: '', email: '', phone: '', notes: '',
+  name: '', location: '', email: '', phone: '', notes: '', participantId: '',
 }
 
 // "New Booking" form: pick a day, a time range, the participant and a team, then book.
 export default function BookingPanel() {
-  const { sessions, addSession, removeSession, openBooking, setNote, triggerRef } = useSchedule()
+  const { sessions, addSession, removeSession, openBooking, setNote, triggerRef, draft } = useSchedule()
+  const queue = useQueue()
+  const openQueue = queue.filter((p) => p.status === 'open')
+  const panelRef = useRef(null)
   const toast = useToast()
   const [form, setForm] = useState(DEFAULTS)
   const [slide, setSlide] = useState({ dir: null, key: 0 })
@@ -27,6 +32,22 @@ export default function BookingPanel() {
 
   const week = weekOf(form.date)
   const { trackRef, pillProps } = useSlidingPill(`${slide.key}:${form.date}`)
+
+  // Fill name, address and contact from a OneForma participant.
+  const pickParticipant = (id) => {
+    const p = queue.find((q) => q.id === id)
+    if (!p) { set({ participantId: '' }); return }
+    set({ participantId: p.id, name: p.name, location: p.address.split(',')[0], email: p.email ?? '', phone: p.phone ?? '' })
+  }
+
+  // "Book" on the map hands a participant over: fill the form and bring it into view.
+  useEffect(() => {
+    if (!draft) return
+    pickParticipant(draft.participantId)
+    const el = panelRef.current
+    el?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+    requestAnimationFrame(() => el?.querySelector('.atlas-booking-pt-select')?.focus({ preventScroll: true }))
+  }, [draft]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const shiftWeek = (dir) => {
     set({ date: addDays(form.date, dir * 7) })
@@ -60,6 +81,7 @@ export default function BookingPanel() {
       email: form.email.trim(),
       phone: form.phone.trim(),
       notes: form.notes.trim(),
+      ...(form.participantId ? { participantId: form.participantId } : {}),
     })
     setForm((f) => ({ ...DEFAULTS, date: f.date }))
     setMore(false)
@@ -75,7 +97,7 @@ export default function BookingPanel() {
   }
 
   return (
-    <section className="atlas-booking atlas-raised">
+    <section ref={panelRef} className="atlas-booking atlas-raised">
       <div className="atlas-booking-head">
         <h2 className="atlas-booking-title">New Booking</h2>
         <button
@@ -132,7 +154,23 @@ export default function BookingPanel() {
       </div>
 
       <div className="atlas-booking-participant">
-        <TextField label="PARTICIPANT" value={form.name} placeholder="Full name" onChange={(v) => set({ name: v })} />
+        <label className="atlas-field">
+          <span className="atlas-eyebrow">FROM ONEFORMA QUEUE</span>
+          <select
+            className="atlas-input atlas-booking-pt-select"
+            value={form.participantId}
+            onChange={(e) => pickParticipant(e.target.value)}
+          >
+            <option value="">Pick an endorsed participant ({openQueue.length} open)</option>
+            {form.participantId && !openQueue.some((p) => p.id === form.participantId) && (
+              <option value={form.participantId}>{form.name}</option>
+            )}
+            {openQueue.map((p) => (
+              <option key={p.id} value={p.id}>{p.name} · {formatMiles(p.distMi)} · {p.id}</option>
+            ))}
+          </select>
+        </label>
+        <TextField label="PARTICIPANT" value={form.name} placeholder="Full name" onChange={(v) => set({ name: v, participantId: '' })} />
         <TextField label="LOCATION" value={form.location} placeholder="Address or meeting link" onChange={(v) => set({ location: v })} />
         <button
           type="button"

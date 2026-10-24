@@ -5,6 +5,9 @@ import WeekView from './views/WeekView.jsx'
 import MonthView from './views/MonthView.jsx'
 import BookingDrawer from './components/booking/BookingDrawer.jsx'
 import BookingMenu from './components/booking/BookingMenu.jsx'
+import AppMenu, { useAppMenuTrigger } from './components/AppMenu.jsx'
+import NoAccess from './components/NoAccess.jsx'
+import { useRole } from './state/RoleContext.jsx'
 
 const TITLES = {
   '/day': 'Atlas Scheduling | Desktop',
@@ -15,10 +18,15 @@ const TITLES = {
 
 export default function App() {
   const { pathname } = useLocation()
+  const { canBook } = useRole()
+  useAppMenuTrigger(canBook)
 
   useEffect(() => {
     if (TITLES[pathname]) document.title = TITLES[pathname]
   }, [pathname])
+
+  // The Booking app is for Admins and Schedulers.
+  if (!canBook) return <NoAccess />
 
   return (
     <>
@@ -31,6 +39,7 @@ export default function App() {
       </Routes>
       <BookingDrawer />
       <BookingMenu />
+      <AppMenu />
     </>
   )
 }

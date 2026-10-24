@@ -6,12 +6,13 @@ import { useToast } from '../motion/Toast.jsx'
 // bookings, edits and cancellations survive a refresh. There is no backend.
 const ScheduleContext = createContext(null)
 
-const STORAGE_KEY = 'atlas_schedule_v1'
+// v2: bookings carry their OneForma participantId (older v1 copies are ignored).
+const STORAGE_KEY = 'atlas_schedule_v2'
 
 function loadSessions() {
   try {
     const saved = JSON.parse(window.localStorage.getItem(STORAGE_KEY))
-    if (saved?.version === 1 && Array.isArray(saved.sessions)) return saved.sessions
+    if (saved?.version === 2 && Array.isArray(saved.sessions)) return saved.sessions
   } catch {
     // Unreadable or blocked storage: start from the seed data.
   }
@@ -21,7 +22,7 @@ function loadSessions() {
 // Returns false when this browser refuses to store (private mode, full storage).
 function saveSessions(sessions) {
   try {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify({ version: 1, sessions }))
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify({ version: 2, sessions }))
     return true
   } catch {
     return false
@@ -39,6 +40,8 @@ export function ScheduleProvider({ children }) {
   const [menu, setMenu] = useState(null)
   // Inline "Saved" note in the details panel: { id, text, undo }.
   const [note, setNote] = useState(null)
+  // A participant handed to the New Booking form from elsewhere (the map): { participantId, key }.
+  const [draft, setDraftState] = useState(null)
   // The card that opened the panel or menu, so focus can go back to it.
   const triggerRef = useRef(null)
   const toast = useToast()
@@ -109,13 +112,14 @@ export function ScheduleProvider({ children }) {
   const closeMenu = useCallback(() => setMenu(null), [])
 
   const clearNote = useCallback(() => setNote(null), [])
+  const startDraft = useCallback((participantId) => setDraftState({ participantId, key: Date.now() }), [])
 
   const value = useMemo(() => ({
     sessions, addSession, updateSession, rescheduleSession, cancelSession, startSession, completeSession,
     restoreSession, removeSession,
     panel, openBooking, openDay, closePanel, menu, openMenu, closeMenu,
-    note, setNote, clearNote, triggerRef,
-  }), [sessions, addSession, updateSession, rescheduleSession, cancelSession, startSession, completeSession,
+    note, setNote, clearNote, triggerRef, draft, startDraft,
+  }), [draft, startDraft, sessions, addSession, updateSession, rescheduleSession, cancelSession, startSession, completeSession,
     restoreSession, removeSession,
     panel, openBooking, openDay, closePanel, menu, openMenu, closeMenu, note, clearNote])
   return <ScheduleContext.Provider value={value}>{children}</ScheduleContext.Provider>

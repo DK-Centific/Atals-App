@@ -261,6 +261,7 @@ body {
 }
 
 .atlas-session-card {
+    flex-shrink: 0;
     background: var(--bg-surface);
     border-radius: 20px;
     padding: 1rem 1.25rem;
@@ -1177,67 +1178,72 @@ button:disabled::after { display: none; }
 }
 .atlas-map[data-state="closing"] { @apply pointer-events-none; animation: atlas-map-collapse 300ms var(--ease-exit) forwards; }
 .atlas-map-canvas { @apply absolute inset-0 overflow-hidden; animation: atlas-map-settle 450ms var(--ease-slide) backwards; }
-.atlas-map-grid {
-    @apply absolute inset-0;
-    background-image:
-        linear-gradient(to right, rgba(255, 255, 255, 0.02) 1px, transparent 1px),
-        linear-gradient(to bottom, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
-    background-size: 10rem 10rem;
+/* MapLibre fills the map; its own controls are restyled to match Atlas. */
+.atlas-map-canvas .maplibregl-ctrl-attrib {
+    background: rgba(21, 23, 25, 0.75) !important;
+    color: var(--text-muted);
+    font-size: 10px;
 }
-.atlas-map-stage { @apply absolute left-1/2 top-1/2; }
-.atlas-map-layer { @apply absolute inset-0; transform-origin: 50% 50%; transition: transform 450ms var(--ease-out); }
-.atlas-map-svg { @apply absolute inset-0 w-full h-full; }
-.atlas-map-route {
-    fill: none;
-    stroke: var(--accent);
-    stroke-width: 4;
-    stroke-linecap: round;
-    stroke-dasharray: 1;
-    filter: drop-shadow(0 0 8px var(--accent-glow));
-    animation: atlas-map-draw 700ms var(--ease-out) 300ms backwards;
+.atlas-map-canvas .maplibregl-ctrl-attrib a { color: var(--text-secondary); }
+.atlas-map-canvas .maplibregl-ctrl-attrib-button { filter: invert(1); }
+.atlas-map-canvas .maplibregl-canvas:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+
+/* Each marker host is a zero-size point that MapLibre positions. */
+.atlas-map-pin { @apply w-0 h-0 z-[1]; }
+.atlas-map-pin--hq { @apply z-[3]; }
+.atlas-map-pin--label { @apply z-[4] pointer-events-none; }
+
+.atlas-map-hq { @apply absolute flex flex-col items-center gap-1.5 -translate-x-1/2 -translate-y-1/2 pointer-events-auto; }
+.atlas-map-hq-mark {
+    @apply block w-4 h-4 rotate-45 rounded-[4px];
+    background: #F5F7FA;
+    border: 3px solid #00E5FF;
+    box-shadow: 0 0 0 6px rgba(0, 229, 255, 0.15), 0 0 18px var(--accent-glow);
 }
-.atlas-map-team-dot { filter: drop-shadow(0 0 12px var(--accent-glow)); }
-.atlas-map-pulse {
-    @apply absolute w-10 h-10 rounded-full pointer-events-none;
-    background: var(--accent-glow);
-    animation: atlas-map-ring 2s var(--ease-loop) infinite;
+.atlas-map-hq-label {
+    @apply px-2 py-0.5 rounded-md text-[10px] font-bold whitespace-nowrap;
+    letter-spacing: 0.12em;
+    background: rgba(21, 23, 25, 0.88);
+    color: var(--text-primary);
+    border: 1px solid rgba(255, 255, 255, 0.08);
 }
+
 .atlas-map-marker {
-    @apply absolute z-10 px-3 py-1 rounded-lg text-[11px] font-semibold whitespace-nowrap pointer-events-none;
+    @apply absolute px-3 py-1 rounded-lg text-[11px] font-semibold whitespace-nowrap pointer-events-none;
     background: var(--bg-surface);
     border: 1px solid var(--accent);
     color: var(--accent);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
-    transform: translate(-50%, -140%);
+    transform: translate(-50%, -2.4rem);
+    animation: viewEnter 240ms var(--ease-out) 600ms backwards;
 }
-.atlas-map-marker--destination { border-color: #EF4444; color: #EF4444; transform: translate(-50%, -180%); }
 
-/* Session dots appear as you zoom out: a spring pop (420ms) plus a fade. */
+/* Participant dots: hidden past the reveal distance, they pop in on --spring
+   (420ms) as you zoom out. Orange open, purple booked, blue in session, grey completed. */
 .atlas-map-dot {
-    @apply absolute w-[1.625rem] h-[1.625rem] -ml-[0.8125rem] -mt-[0.8125rem] z-[6] flex items-center justify-center pointer-events-none;
+    @apply absolute w-[1.625rem] h-[1.625rem] -ml-[0.8125rem] -mt-[0.8125rem] flex items-center justify-center pointer-events-none;
     opacity: 0;
     scale: 0.2;
     transition: opacity 200ms var(--ease-out), scale 420ms var(--spring);
 }
 .atlas-map-dot.is-revealed { @apply pointer-events-auto cursor-pointer; opacity: 1; scale: 1; }
-.atlas-map-dot:focus-within, .atlas-map-dot:hover { @apply z-30; }
-.atlas-map-dot-core { @apply block w-3 h-3 rounded-full; border: 2px solid rgba(255, 255, 255, 0.3); }
-.atlas-map-dot--booked .atlas-map-dot-core { background: #A78BFA; box-shadow: 0 0 12px rgba(167, 139, 250, 0.55); }
-.atlas-map-dot--insession .atlas-map-dot-core { background: var(--accent); box-shadow: 0 0 12px var(--accent-glow); }
-.atlas-map-dot--completed .atlas-map-dot-core { background: var(--status-completed); box-shadow: 0 0 12px rgba(16, 185, 129, 0.45); }
-.atlas-map-dot--cancelled .atlas-map-dot-core { background: var(--status-cancelled); opacity: 0.7; }
-.atlas-map-dot--pending .atlas-map-dot-core {
-    background: rgba(245, 158, 11, 0.15);
-    border: 2px dashed #F59E0B;
-    box-shadow: 0 0 6px rgba(245, 158, 11, 0.25);
-    animation: atlas-map-pending 2.4s var(--ease-loop) infinite;
+.atlas-map-pin:has(.atlas-map-dot:hover), .atlas-map-pin:has(.atlas-map-dot:focus-visible), .atlas-map-pin:has(.is-selected) { z-index: 5; }
+.atlas-map-dot-core {
+    @apply block w-3.5 h-3.5 rounded-full;
+    border: 2px solid rgba(255, 255, 255, 0.85);
+    transition: scale 150ms var(--ease-out);
 }
-.atlas-map-dot--booked-now .atlas-map-dot-core { background: #A78BFA; box-shadow: 0 0 12px rgba(167, 139, 250, 0.55); }
-button.atlas-map-dot-core { @apply cursor-pointer; }
+.atlas-map-dot--open .atlas-map-dot-core { background: #F59E0B; box-shadow: 0 0 10px rgba(245, 158, 11, 0.55); }
+.atlas-map-dot--booked .atlas-map-dot-core { background: #A78BFA; box-shadow: 0 0 10px rgba(167, 139, 250, 0.55); }
+.atlas-map-dot--insession .atlas-map-dot-core { background: var(--accent); box-shadow: 0 0 12px var(--accent-glow); }
+.atlas-map-dot--completed .atlas-map-dot-core { background: #6B7280; border-color: rgba(255, 255, 255, 0.45); }
+.atlas-map-dot.is-selected .atlas-map-dot-core { scale: 1.45; box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.18), 0 0 16px rgba(255, 255, 255, 0.35); }
+.atlas-map-dot:active .atlas-map-dot-core { scale: 0.9; }
+.atlas-map-dot.is-selected:active .atlas-map-dot-core { scale: 1.35; }
 
 /* Hover label: a tooltip, so it only fades (140ms) and never moves. */
 .atlas-map-dot-label {
-    @apply absolute bottom-5 left-1/2 px-2.5 py-[5px] rounded-lg text-[10px] font-semibold whitespace-nowrap pointer-events-none;
+    @apply absolute bottom-6 left-1/2 px-2.5 py-[5px] rounded-lg text-[10px] font-semibold whitespace-nowrap pointer-events-none;
     transform: translateX(-50%);
     background: rgba(34, 36, 40, 0.95);
     border: 1px solid rgba(255, 255, 255, 0.08);
@@ -1247,71 +1253,13 @@ button.atlas-map-dot-core { @apply cursor-pointer; }
     opacity: 0;
     transition: opacity 140ms var(--ease-out);
 }
+.atlas-map-dot--open .atlas-map-dot-status { color: #F59E0B; }
 .atlas-map-dot--booked .atlas-map-dot-status { color: #A78BFA; }
 .atlas-map-dot--insession .atlas-map-dot-status { color: var(--accent); }
-.atlas-map-dot--completed .atlas-map-dot-status { color: var(--status-completed); }
-.atlas-map-dot--cancelled .atlas-map-dot-status { color: var(--status-cancelled); }
+.atlas-map-dot--completed .atlas-map-dot-status { color: #9CA3AF; }
 .atlas-map-dot:focus-visible .atlas-map-dot-label { opacity: 1; }
 @media (hover: hover) and (pointer: fine) {
     .atlas-map-dot.is-revealed:hover .atlas-map-dot-label { opacity: 1; }
-}
-
-/* Booking suggestions for a location not booked yet: a small menu-style pop. */
-.atlas-map-suggest {
-    @apply absolute bottom-[1.375rem] left-1/2 w-[21.5rem] p-[1.125rem] rounded-2xl text-left z-20 pointer-events-none;
-    background: rgba(30, 32, 36, 0.97);
-    backdrop-filter: blur(14px);
-    -webkit-backdrop-filter: blur(14px);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    box-shadow: 0 18px 40px rgba(0, 0, 0, 0.65);
-    transform: translateX(-50%) translateY(4px) scale(0.97);
-    transform-origin: 50% 100%;
-    opacity: 0;
-    transition: opacity 160ms var(--ease-out), transform 160ms var(--ease-out);
-}
-.atlas-map-dot.is-revealed:focus-within .atlas-map-suggest {
-    @apply pointer-events-auto;
-    opacity: 1;
-    transform: translateX(-50%) translateY(0) scale(1);
-}
-@media (hover: hover) and (pointer: fine) {
-    .atlas-map-dot.is-revealed:hover .atlas-map-suggest {
-        @apply pointer-events-auto;
-        opacity: 1;
-        transform: translateX(-50%) translateY(0) scale(1);
-    }
-}
-.atlas-map-suggest-head { @apply flex items-center justify-between mb-1.5; }
-.atlas-map-suggest-name { @apply text-[0.8125rem] font-bold tracking-wide text-[var(--text-primary)]; }
-.atlas-map-suggest-status { @apply !text-[11px] mb-2; color: #F59E0B !important; letter-spacing: 0.08em; }
-.atlas-map-suggest-status.is-booked { color: #A78BFA !important; }
-.atlas-map-suggest-row { @apply flex items-center gap-2.5 px-2.5 py-2 rounded-[10px]; transition: background-color 160ms var(--ease-out); }
-.atlas-map-suggest-row.is-best { background: rgba(0, 229, 255, 0.05); }
-@media (hover: hover) and (pointer: fine) {
-    .atlas-map-suggest-row:hover { background: rgba(255, 255, 255, 0.04); }
-}
-.atlas-map-suggest-text { @apply flex-1; }
-.atlas-map-suggest-range { @apply text-[0.8125rem] font-semibold leading-[1.35]; }
-.atlas-map-suggest-note { @apply text-[11.5px] leading-[1.35] text-[var(--text-secondary)]; }
-.atlas-map-suggest-foot { @apply text-[10.5px] font-semibold tracking-wide text-[var(--text-muted)] mt-2 leading-tight; }
-.atlas-map-chip { @apply text-[10.5px] font-bold px-2 py-[3px] rounded-md whitespace-nowrap; letter-spacing: 0.08em; }
-.atlas-map-chip--p0 { background: rgba(0, 229, 255, 0.15); color: var(--accent); border: 1px solid rgba(0, 229, 255, 0.35); }
-.atlas-map-chip--p1 { background: rgba(167, 139, 250, 0.15); color: #A78BFA; border: 1px solid rgba(167, 139, 250, 0.35); }
-.atlas-map-chip--p2 { background: rgba(255, 255, 255, 0.06); color: var(--text-secondary); border: 1px solid rgba(255, 255, 255, 0.1); }
-.atlas-map-chip--pending { background: rgba(245, 158, 11, 0.15); color: #F59E0B; border: 1px solid rgba(245, 158, 11, 0.35); }
-.atlas-map-chip--booked { background: rgba(167, 139, 250, 0.15); color: #A78BFA; border: 1px solid rgba(167, 139, 250, 0.35); }
-.atlas-map-book {
-    @apply text-[10px] font-bold px-3 py-1.5 rounded-lg whitespace-nowrap cursor-pointer;
-    letter-spacing: 0.08em;
-    background: var(--accent);
-    color: #101214;
-    transition: scale 150ms var(--ease-out), filter 200ms var(--ease-out);
-}
-.atlas-map-book:not(:disabled):active { scale: 0.97; }
-.atlas-map-book:disabled { opacity: 0.3; cursor: default; }
-.atlas-map-book.is-booked:disabled { @apply text-white; background: #A78BFA; opacity: 1; }
-@media (hover: hover) and (pointer: fine) {
-    .atlas-map-book:not(:disabled):hover { filter: brightness(1.1); }
 }
 
 /* Controls over the map fade up once the map has opened, and leave first. */
@@ -1334,17 +1282,6 @@ button.atlas-map-dot-core { @apply cursor-pointer; }
 }
 .atlas-map-back-label { @apply font-semibold text-sm tracking-wide; }
 
-.atlas-map-search {
-    @apply absolute top-10 left-1/2 -translate-x-1/2 z-50 w-[25rem] h-14 px-6 rounded-[1.75rem] flex items-center gap-3;
-    background: rgba(34, 36, 40, 0.9);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    box-shadow: var(--neu-flat);
-    border: var(--border-subtle);
-}
-.atlas-map-search-input { @apply flex-1 bg-transparent border-none text-white placeholder-[var(--text-muted)]; outline: none; }
-.atlas-map-search:focus-within { box-shadow: var(--neu-flat), 0 0 0 2px var(--accent); }
-.atlas-map-search-locate { @apply w-8 h-8 rounded-full flex items-center justify-center; }
 
 .atlas-map-zoom-status {
     @apply absolute right-10 bottom-[14.75rem] z-50 px-3.5 py-2 rounded-[0.875rem];
@@ -1372,7 +1309,6 @@ button.atlas-map-dot-core { @apply cursor-pointer; }
     .atlas-map-zoom-btn:not(:disabled):hover { box-shadow: var(--neu-hover-sm); }
 }
 
-.atlas-map-detail { @apply absolute left-10 bottom-10 w-[22.5rem] rounded-[2rem] overflow-hidden z-50 p-6; }
 .atlas-map-detail-head { @apply flex items-center gap-3 mb-6; }
 .atlas-map-detail-live { @apply w-12 h-12 rounded-2xl flex items-center justify-center; }
 .atlas-map-detail-live-dot { @apply w-2 h-2 rounded-full bg-[var(--accent)]; }
@@ -1398,18 +1334,18 @@ button.atlas-map-dot-core { @apply cursor-pointer; }
 .atlas-map-detail-contact { @apply font-semibold bg-[var(--bg-recessed)] border border-[rgba(255,255,255,0.05)]; }
 .atlas-map-detail-expand { @apply font-bold text-black bg-[var(--accent)] shadow-[0_8px_20px_var(--accent-glow)]; }
 .atlas-map-detail-contact:not(:disabled):active,
-.atlas-map-detail-expand:active { scale: 0.97; }
+.atlas-map-detail-expand:not(:disabled):active { scale: 0.97; }
+.atlas-map-detail-expand:disabled { @apply opacity-40 cursor-not-allowed shadow-none; }
 @media (hover: hover) and (pointer: fine) {
     .atlas-map-detail-contact:not(:disabled):hover { background-color: var(--bg-surface); }
-    .atlas-map-detail-expand:hover { background-color: #33EBFF; }
+    .atlas-map-detail-expand:not(:disabled):hover { background-color: #33EBFF; }
 }
 
 @media (prefers-reduced-motion: reduce) {
     .atlas-map, .atlas-map[data-state="closing"] { animation: fade 120ms linear backwards; }
-    .atlas-map-canvas, .atlas-map-route, .atlas-map-chrome, .atlas-map-zoom-controls, .atlas-map-zoom-status,
-    .atlas-map-pulse, .atlas-map-dot--pending .atlas-map-dot-core { animation: none !important; }
-    .atlas-map-layer, .atlas-map-dot, .atlas-map-suggest { transition: opacity 120ms linear; }
-    .atlas-map-pulse { opacity: 0; }
+    .atlas-map-canvas, .atlas-map-chrome, .atlas-map-zoom-controls, .atlas-map-zoom-status, .atlas-map-marker,
+    .atlas-map-info, .atlas-app-menu-sub, .atlas-sync-dots i { animation: none !important; }
+    .atlas-map-dot, .atlas-map-dot-core { transition: opacity 120ms linear; }
 }
 
 
@@ -1502,10 +1438,208 @@ button.atlas-map-dot-core { @apply cursor-pointer; }
 
     .atlas-map-back { @apply top-4 left-4 h-11 px-4; }
     .atlas-map-back-label { @apply hidden; }
-    .atlas-map-search { @apply top-4 left-[4.5rem] right-4 w-auto translate-x-0 h-11 px-4; }
-    .atlas-map-detail { @apply left-3 right-3 bottom-3 w-auto p-4 rounded-3xl; }
-    .atlas-map-detail-body { @apply p-4 mb-4; }
     .atlas-map-zoom-controls { @apply right-4; bottom: auto; top: 5rem; }
     .atlas-map-zoom-status { @apply hidden; }
-    .atlas-map-suggest { width: 18rem; }
+}
+
+
+/* ---------- OneForma queue (left panel on the map) ---------- */
+.atlas-queue {
+    @apply absolute left-10 top-[6.5rem] bottom-10 w-[22rem] z-50 p-5 rounded-[1.75rem] flex flex-col gap-3.5;
+    background: rgba(30, 32, 36, 0.94);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    box-shadow: var(--neu-flat);
+}
+.atlas-queue-head { @apply flex items-start justify-between; }
+.atlas-queue-eyebrow { @apply !text-[var(--accent)]; }
+.atlas-queue-title { @apply text-2xl mt-1; font-family: var(--font-serif); }
+
+.atlas-queue-sync { @apply flex items-center gap-2; }
+.atlas-queue-sync-line { @apply flex items-center gap-2 flex-1 min-w-0 text-xs text-[var(--text-secondary)]; }
+.atlas-queue-sync-text { @apply truncate; }
+.atlas-queue-sync-dot { @apply w-2 h-2 rounded-full flex-shrink-0; background: var(--status-completed); transition: background-color 300ms var(--ease-out); }
+.atlas-queue-sync-line.is-loading .atlas-queue-sync-dot { background: var(--accent); animation: breathe 1.2s var(--ease-loop) infinite; }
+.atlas-queue-sync-line.is-failed .atlas-queue-sync-dot { background: var(--status-cancelled); }
+.atlas-queue-sync-line.is-failed { @apply text-[var(--status-cancelled)]; }
+.atlas-queue-mock {
+    @apply px-1.5 py-0.5 rounded text-[9px] font-bold flex-shrink-0;
+    letter-spacing: 0.1em;
+    color: #F59E0B;
+    background: rgba(245, 158, 11, 0.12);
+    border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+/* Sync button (spec section 7): the icon crossfades to four chasing dots. */
+.atlas-sync-btn {
+    @apply flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold cursor-pointer flex-shrink-0 text-[var(--text-primary)] bg-[var(--bg-recessed)];
+    box-shadow: var(--neu-inset-sm);
+    transition: scale 150ms var(--ease-out);
+}
+.atlas-sync-btn:not(.is-busy):active { scale: 0.97; }
+.atlas-sync-btn.is-busy { cursor: progress; }
+.atlas-sync-icon { @apply relative w-3.5 h-3.5 flex items-center justify-center text-[var(--accent)]; }
+.atlas-sync-icon-idle, .atlas-sync-dots { @apply absolute inset-0 m-auto; transition: opacity 200ms var(--ease-out), scale 200ms var(--ease-out); }
+.atlas-sync-dots { @apply grid grid-cols-2 gap-[2px] w-3 h-3 opacity-0; scale: 0.6; }
+.atlas-sync-dots i { @apply block rounded-full bg-[var(--accent)]; animation: atlas-chase 1.2s var(--ease-loop) infinite; }
+.atlas-sync-dots i:nth-child(2) { animation-delay: 0.3s; }
+.atlas-sync-dots i:nth-child(4) { animation-delay: 0.6s; }
+.atlas-sync-dots i:nth-child(3) { animation-delay: 0.9s; }
+.atlas-sync-btn.is-busy .atlas-sync-icon-idle { opacity: 0; scale: 0.6; }
+.atlas-sync-btn.is-busy .atlas-sync-dots { opacity: 1; scale: 1; }
+@keyframes atlas-chase { 0%, 100% { opacity: 0.25; transform: scale(0.7); } 50% { opacity: 1; transform: scale(1); } }
+
+.atlas-queue-teams { @apply flex gap-2; }
+.atlas-queue-team {
+    @apply flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-semibold cursor-pointer text-[var(--text-secondary)] bg-[var(--bg-surface)];
+    box-shadow: var(--neu-flat-sm);
+    transition: scale 150ms var(--ease-out), color 200ms var(--ease-out), box-shadow 200ms var(--ease-out);
+}
+.atlas-queue-team:active { scale: 0.97; box-shadow: var(--neu-inset-sm); }
+.atlas-queue-team-code { @apply text-[10px] font-bold text-[var(--accent)]; }
+@media (hover: hover) and (pointer: fine) {
+    .atlas-queue-team:hover { color: var(--text-primary); box-shadow: var(--neu-hover-sm); }
+}
+
+.atlas-queue-search {
+    @apply flex items-center gap-2 px-3.5 h-10 rounded-xl text-[var(--text-muted)] bg-[var(--bg-recessed)];
+    box-shadow: var(--neu-inset-sm);
+}
+.atlas-queue-search:focus-within { box-shadow: var(--neu-inset-sm), 0 0 0 2px var(--accent); }
+.atlas-queue-search-input { @apply flex-1 min-w-0 bg-transparent text-sm text-[var(--text-primary)] placeholder-[var(--text-muted)]; outline: none; }
+
+.atlas-queue-list { @apply flex-1 min-h-0 overflow-y-auto flex flex-col gap-1 -mx-2 px-2; }
+.atlas-queue-row {
+    @apply relative w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left cursor-pointer;
+    transition: scale 150ms var(--ease-out);
+}
+.atlas-queue-row::after {
+    content: '';
+    @apply absolute inset-0 rounded-xl pointer-events-none opacity-0;
+    background: rgba(255, 255, 255, 0.04);
+    transition: opacity 160ms var(--ease-out);
+}
+.atlas-queue-row.is-selected { background: rgba(0, 229, 255, 0.08); box-shadow: inset 0 0 0 1px rgba(0, 229, 255, 0.25); }
+.atlas-queue-row:active { scale: 0.98; }
+@media (hover: hover) and (pointer: fine) {
+    .atlas-queue-row:hover::after { opacity: 1; }
+}
+.atlas-queue-dot { @apply inline-block w-2.5 h-2.5 rounded-full flex-shrink-0; }
+.atlas-queue-dot--open { background: #F59E0B; }
+.atlas-queue-dot--booked { background: #A78BFA; }
+.atlas-queue-dot--insession { background: var(--accent); box-shadow: 0 0 8px var(--accent-glow); }
+.atlas-queue-dot--completed { background: #6B7280; }
+.atlas-queue-text { @apply flex-1 min-w-0 flex flex-col; }
+.atlas-queue-name { @apply text-sm font-semibold truncate; }
+.atlas-queue-meta { @apply text-[11px] text-[var(--text-secondary)] truncate; }
+.atlas-queue-dist { @apply text-xs font-semibold text-[var(--text-secondary)] flex-shrink-0 tabular-nums; }
+
+.atlas-queue-layers { @apply flex flex-wrap gap-1.5 pt-3 border-t border-[rgba(255,255,255,0.05)]; }
+.atlas-layer-toggle {
+    @apply flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-[11px] font-medium cursor-pointer text-[var(--text-muted)] bg-[var(--bg-recessed)];
+    transition: scale 150ms var(--ease-out);
+}
+.atlas-layer-toggle:not(.is-on) .atlas-queue-dot { opacity: 0.35; }
+.atlas-layer-toggle.is-on { @apply text-[var(--text-primary)]; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12); }
+.atlas-layer-toggle:active { scale: 0.96; }
+
+/* ---------- Info / action tile for a clicked dot ---------- */
+.atlas-map-info { @apply absolute right-[7.5rem] top-10 w-[22.5rem] z-50 p-6 rounded-[2rem] flex flex-col gap-5; }
+.atlas-map-info-head { @apply flex items-start justify-between gap-3; }
+.atlas-map-info-head-text { @apply flex flex-col gap-1 min-w-0; }
+.atlas-map-info-status { @apply flex items-center gap-2; }
+.atlas-map-info-status--open { @apply !text-[#F59E0B]; }
+.atlas-map-info-status--booked { @apply !text-[#A78BFA]; }
+.atlas-map-info-status--insession { @apply !text-[var(--accent)]; }
+.atlas-map-info-name { @apply text-3xl leading-tight; font-family: var(--font-serif); }
+.atlas-map-info-id { @apply text-xs text-[var(--text-muted)] font-mono; }
+.atlas-map-info-close { @apply w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 cursor-pointer text-[var(--text-secondary)] bg-[var(--bg-recessed)]; transition: scale 150ms var(--ease-out); }
+.atlas-map-info-close:active { scale: 0.95; }
+@media (hover: hover) and (pointer: fine) {
+    .atlas-map-info-close:hover { color: var(--text-primary); }
+}
+.atlas-map-info-body { @apply rounded-2xl p-5 flex flex-col gap-4; }
+.atlas-map-info-address { @apply text-sm leading-snug; }
+.atlas-map-info-grid { @apply grid grid-cols-2 gap-4 pt-4 border-t border-[rgba(255,255,255,0.05)]; }
+.atlas-map-info-contact { @apply flex flex-wrap justify-between gap-2 text-xs; }
+
+.atlas-map-offline {
+    @apply absolute left-1/2 bottom-10 -translate-x-1/2 z-50 px-4 py-2 rounded-xl text-xs text-[var(--text-secondary)];
+    background: rgba(34, 36, 40, 0.92);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+/* ---------- App-wide right-click menu ---------- */
+.atlas-app-menu { @apply min-w-[15rem] overflow-visible; }
+.atlas-app-menu-parent,
+.atlas-app-menu-check,
+.atlas-app-menu-session { @apply flex items-center gap-2.5; }
+.atlas-app-menu-parent > span:first-child { @apply flex-1; }
+.atlas-app-menu-parent.is-open { background: var(--bg-recessed); }
+.atlas-app-menu-count {
+    @apply min-w-[1.25rem] h-5 px-1.5 rounded-full text-[10px] font-bold flex items-center justify-center text-[var(--accent)];
+    background: rgba(0, 229, 255, 0.1);
+}
+.atlas-app-menu-caret { @apply text-[var(--text-muted)] text-base leading-none; }
+.atlas-app-menu-box {
+    @apply w-4 h-4 rounded-[5px] flex-shrink-0 flex items-center justify-center;
+    box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, 0.25);
+}
+.atlas-app-menu-box.is-on { background: var(--accent); box-shadow: none; }
+.atlas-app-menu-box.is-on::after {
+    content: '';
+    @apply block w-2 h-1 -mt-0.5 -rotate-45;
+    border-left: 2px solid #001318;
+    border-bottom: 2px solid #001318;
+}
+.atlas-menu-item:disabled { @apply opacity-40 cursor-default; }
+.atlas-app-menu-sep { @apply h-px my-1.5 mx-2 bg-[rgba(255,255,255,0.06)]; }
+.atlas-app-menu-sub {
+    @apply absolute top-0 left-full ml-1.5 min-w-[16rem] max-h-[70vh] overflow-y-auto p-2 rounded-2xl flex flex-col;
+    transform-origin: top left;
+    animation: menuPop 160ms var(--ease-out) backwards;
+}
+.atlas-app-menu[style*="top right"] .atlas-app-menu-sub { @apply left-auto right-full ml-0 mr-1.5; transform-origin: top right; }
+.atlas-app-menu-time { @apply text-xs font-mono text-[var(--text-secondary)] w-10 flex-shrink-0; }
+.atlas-app-menu-name { @apply flex-1 truncate; }
+.atlas-app-menu-empty { @apply px-3 py-2 text-sm text-[var(--text-muted)]; }
+
+/* ---------- Role switch (sidebar avatar) and no-access screen ---------- */
+.atlas-role { @apply relative; }
+.atlas-role-trigger {
+    @apply w-10 h-10 rounded-full flex items-center justify-center text-[11px] font-bold cursor-pointer text-[var(--accent)];
+    transition: scale 150ms var(--ease-out);
+}
+.atlas-role-trigger:active { scale: 0.95; }
+.atlas-role-menu {
+    @apply absolute left-full bottom-0 ml-4 z-[950] min-w-[15rem] p-2 rounded-2xl flex flex-col;
+    transform-origin: bottom left;
+    animation: menuPop 160ms var(--ease-out) backwards;
+}
+.atlas-role-item { @apply flex items-center justify-between gap-3; }
+.atlas-role-item.is-active { @apply text-[var(--accent)]; background: rgba(0, 229, 255, 0.06); }
+.atlas-role-note { @apply text-[10px] text-[var(--text-muted)] whitespace-nowrap; }
+
+.atlas-no-access { @apply min-h-screen flex items-center justify-center p-6; }
+.atlas-no-access-card { @apply max-w-md w-full p-8 rounded-[2rem] flex flex-col gap-3; }
+.atlas-no-access-title { @apply text-3xl leading-tight; font-family: var(--font-serif); }
+.atlas-no-access-text { @apply text-sm text-[var(--text-secondary)] leading-relaxed; }
+.atlas-no-access-actions { @apply flex gap-3 mt-3; }
+.atlas-no-access-actions > * { @apply flex-1; }
+
+/* Booking form: participant picked from the OneForma queue */
+.atlas-booking-pt-select { @apply cursor-pointer; color-scheme: dark; }
+
+@media (max-width: 639px) {
+    /* Map on phones: the queue is a sheet along the bottom, the info tile sits over it. */
+    .atlas-queue { @apply top-auto left-2 right-2 bottom-2 w-auto p-4 gap-2.5 rounded-3xl; height: 46vh; padding-bottom: calc(1rem + env(safe-area-inset-bottom)); }
+    .atlas-queue-head { @apply hidden; }
+    .atlas-queue-teams, .atlas-queue-layers { @apply flex-nowrap overflow-x-auto; }
+    .atlas-layer-toggle { @apply flex-shrink-0; }
+    .atlas-map-info { @apply left-2 right-2 top-auto bottom-2 w-auto p-5 gap-4 z-[60]; padding-bottom: calc(1.25rem + env(safe-area-inset-bottom)); }
+    .atlas-map-info-name { @apply text-2xl; }
+    .atlas-map-zoom-status, .atlas-map-offline { @apply hidden; }
+    .atlas-role-menu { @apply left-auto right-0 bottom-auto top-full ml-0 mt-3; transform-origin: top right; }
+    .atlas-app-menu-sub { @apply static ml-0 mt-1 max-h-[40vh]; }
 }
