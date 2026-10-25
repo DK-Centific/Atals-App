@@ -652,7 +652,7 @@ function TripPanel({ trip }) {
         </div>
       )}
       {!loading && trip.estimated && (
-        <div className="atlas-trip-note">Routing service unreachable, so this is a straight-line estimate.</div>
+        <div className="atlas-trip-note">{trip.reason?.startsWith('No routing server') ? 'No routing server is set up yet, so this is a straight-line estimate.' : 'Routing service unreachable, so this is a straight-line estimate.'}</div>
       )}
     </div>
   )

@@ -1,13 +1,16 @@
-// Road routes from HQ for the map's "Route from HQ". Uses an OSRM server
-// (driving profile): the public OSRM demo by default, or VITE_ROUTING_URL for
-// our own. If routing can't be reached, it falls back to a straight-line
-// estimate and says so, so the map still answers.
-// The public demo is for light use only; point VITE_ROUTING_URL at a hosted
-// OSRM (or a paid provider behind the same API) before real traffic.
+// Road routes from HQ for the map's "Route from HQ", from our own self-hosted
+// OSRM server (driving profile, see osrm/README.md) at VITE_ROUTING_URL, so
+// participant coordinates never leave our servers.
+// Without VITE_ROUTING_URL, the public OSRM demo is used only while the
+// OneForma feed is mock data; with real data and no server configured, the
+// map shows a straight-line estimate instead of sending coordinates out.
+// If routing can't be reached, it falls back to that estimate and says so.
 
 import { arcBetween, milesBetween } from './geo.js'
+import { usingMock } from './oneForma.js'
 
-const BASE = (import.meta.env.VITE_ROUTING_URL || 'https://router.project-osrm.org').replace(/\/$/, '')
+const PUBLIC_DEMO = 'https://router.project-osrm.org'
+const BASE = (import.meta.env.VITE_ROUTING_URL || (usingMock ? PUBLIC_DEMO : '')).replace(/\/$/, '')
 const TIMEOUT_MS = 6000
 const METERS_PER_MILE = 1609.344
 // Fallback guesses: roads run ~1.35x the straight line, ~24 mph average around Redmond.
@@ -25,6 +28,7 @@ function estimate(from, to) {
 // Resolves to { coords: [[lng, lat]...], miles, minutes, estimated }. Never rejects
 // except when aborted.
 export async function routeBetween(from, to, signal) {
+  if (!BASE) return { ...estimate(from, to), reason: 'No routing server configured (VITE_ROUTING_URL)' }
   const key = keyOf(from, to)
   if (cache.has(key)) return cache.get(key)
   const timeout = new AbortController()
