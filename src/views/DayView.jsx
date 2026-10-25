@@ -9,6 +9,7 @@ import SessionCard from '../components/day/SessionCard.jsx'
 import FilterMenu from '../components/filter/FilterMenu.jsx'
 import FilterBar from '../components/filter/FilterBar.jsx'
 import MapView from '../components/map/MapView.jsx'
+import PtClock from '../components/PtClock.jsx'
 import { TODAY } from '../data/schedule.js'
 import { longDayLabel } from '../lib/dates.js'
 import { useStagger } from '../motion/motion.js'
@@ -44,6 +45,7 @@ export default function DayView() {
               <StatusLegend />
             </div>
             <div className="atlas-header-tools">
+              <PtClock />
               <FilterMenu />
             </div>
           </header>

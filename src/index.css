@@ -1083,6 +1083,33 @@ button:disabled::after { display: none; }
 /* ---------- Filters (menu, Showing bar) ---------- */
 .atlas-header-tools { @apply flex items-center gap-4; }
 
+/* Live Pacific Time clock over Schedule Overview; hover or focus shows the viewer's own time. */
+.atlas-pt-clock {
+    @apply relative flex items-center gap-2 px-3 py-1.5 rounded-full cursor-default outline-none;
+    background: var(--bg-surface); box-shadow: var(--neu-flat-sm); border: var(--border-subtle);
+    transition: box-shadow 200ms var(--ease-out);
+}
+.atlas-pt-clock:focus-visible { box-shadow: var(--neu-flat-sm), 0 0 0 2px var(--accent); }
+.atlas-pt-clock-dot { @apply w-1.5 h-1.5 rounded-full; background: var(--accent); }
+.atlas-pt-clock-label { @apply text-[10px]; }
+.atlas-pt-clock-time { @apply text-sm font-medium tabular-nums whitespace-nowrap; }
+.atlas-pt-clock-tip {
+    @apply absolute right-0 top-full mt-2 z-[70] w-72 p-4 rounded-2xl flex flex-col gap-2 pointer-events-none;
+    opacity: 0; translate: 0 -0.25rem; transform-origin: top right;
+    transition: opacity 120ms var(--ease-exit), translate 120ms var(--ease-exit);
+}
+.atlas-pt-clock:hover .atlas-pt-clock-tip,
+.atlas-pt-clock:focus-visible .atlas-pt-clock-tip {
+    opacity: 1; translate: 0 0;
+    transition: opacity 180ms var(--ease-out) 150ms, translate 180ms var(--ease-out) 150ms;
+}
+.atlas-pt-clock-tip-title { @apply text-sm font-medium; }
+.atlas-pt-clock-tip-row { @apply flex justify-between gap-3 text-xs; color: var(--text-secondary); }
+.atlas-pt-clock-tip-value { @apply tabular-nums text-right; color: var(--text-primary); }
+@media (prefers-reduced-motion: reduce) {
+    .atlas-pt-clock-tip, .atlas-pt-clock:hover .atlas-pt-clock-tip, .atlas-pt-clock:focus-visible .atlas-pt-clock-tip { translate: 0 0; transition: opacity 120ms linear; }
+}
+
 .atlas-filter-trigger { @apply relative w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0 text-[var(--text-secondary)] cursor-pointer; }
 .atlas-filter-trigger.is-on { @apply text-[var(--accent)]; }
 .atlas-filter-badge {
@@ -1660,4 +1687,5 @@ button:disabled::after { display: none; }
     .atlas-map-zoom-status, .atlas-map-offline { @apply hidden; }
     .atlas-role-menu { @apply left-auto right-0 bottom-auto top-full ml-0 mt-3; transform-origin: top right; }
     .atlas-app-menu-sub { @apply static ml-0 mt-1 max-h-[40vh]; }
+    .atlas-pt-clock-tip { @apply left-0 right-auto; transform-origin: top left; }
 }
