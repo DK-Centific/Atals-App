@@ -3,7 +3,8 @@ import { createPortal } from 'react-dom'
 import maplibregl from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import { TEAMS, TODAY, teamShort } from '../../data/schedule.js'
-import { HQ, arcBetween, boxAround, formatMiles } from '../../lib/geo.js'
+import { HQ, boxAround, formatMiles } from '../../lib/geo.js'
+import { etaFrom, formatDrive, routeBetween } from '../../lib/routing.js'
 import { longDayLabel } from '../../lib/dates.js'
 import { prefersReducedMotion } from '../../motion/motion.js'
 import usePresence from '../../motion/usePresence.js'
@@ -101,7 +102,7 @@ export default function MapView({ open, onClose }) {
 function mapPadding(route = false) {
   if (window.innerWidth < 640) return { top: 80, bottom: window.innerHeight * (route ? 0.5 : 0.48), left: 30, right: 30 }
   const rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16
-  return { top: 8 * rem, bottom: 5 * rem, left: 27 * rem, right: (route ? 33 : 8) * rem }
+  return { top: 8 * rem, bottom: 5 * rem, left: (route ? 33 : 27) * rem, right: (route ? 33 : 8) * rem }
 }
 
 const easeOut = (t) => 1 - (1 - t) ** 4
@@ -126,6 +127,15 @@ function addRouteLayers(map) {
     layout: { 'line-cap': 'round', 'line-join': 'round' },
     paint: { 'line-color': '#00E5FF', 'line-width': 4 },
   })
+  // While the road route loads: a faint dashed straight line to the destination.
+  map.addSource('atlas-route-pending', { type: 'geojson', data: EMPTY_LINE })
+  map.addLayer({
+    id: 'atlas-route-pending',
+    type: 'line',
+    source: 'atlas-route-pending',
+    layout: { 'line-cap': 'round' },
+    paint: { 'line-color': '#00E5FF', 'line-width': 2, 'line-opacity': 0.45, 'line-dasharray': [1, 2.5] },
+  }, 'atlas-route-glow')
 }
 
 // One MapLibre map for the life of the Map view.
@@ -250,8 +260,10 @@ function LiveMap({ onClose }) {
   const { layers, focus, focusParticipant, selected, setSelected, clearFocus } = useMap()
   const picks = useFilteredPicks()
   const toast = useToast()
-  const [route, setRoute] = useState(null) // { to, label }
+  // { to, label, trip: null | { miles, minutes, eta, estimated, reason } }
+  const [route, setRoute] = useState(null)
   const anim = useRef(0)
+  const request = useRef(null)
 
   // Status and team picks narrow the bookings on the map (OR inside a group,
   // AND across). People open to book have no team or booking, so only the
@@ -273,38 +285,64 @@ function LiveMap({ onClose }) {
   const routeItems = useMemo(() => (route ? [{ id: 'route', lng: route.to.lng, lat: route.to.lat }] : []), [route])
   const routeHost = useMarkerHosts(map, routeItems, 'atlas-map-pin atlas-map-pin--label')
 
-  const drawRoute = useCallback((to) => {
-    if (!map) return
-    cancelAnimationFrame(anim.current)
-    const src = map.getSource('atlas-route')
-    const pts = arcBetween(HQ, to)
-    const reduce = prefersReducedMotion()
-    const lngs = [HQ.lng, to.lng]
-    const lats = [HQ.lat, to.lat]
-    const bounds = [[Math.min(...lngs), Math.min(...lats)], [Math.max(...lngs), Math.max(...lats)]]
+  const fit = useCallback((coords) => {
+    const lngs = coords.map((c) => c[0])
+    const lats = coords.map((c) => c[1])
     // Never closer than the opening view: picking someone zooms out to fit the trip.
-    map.fitBounds(bounds, {
+    map.fitBounds([[Math.min(...lngs), Math.min(...lats)], [Math.max(...lngs), Math.max(...lats)]], {
       padding: mapPadding(true),
       maxZoom: baseZoom ?? 14,
-      duration: reduce ? 0 : CAMERA_MS,
+      duration: prefersReducedMotion() ? 0 : CAMERA_MS,
       easing: easeOut,
     })
-    if (!src) return
-    if (reduce) { src.setData(lineOf(pts)); return }
-    src.setData(EMPTY_LINE)
-    const t0 = performance.now() + 120
-    const step = (now) => {
-      const t = Math.min(1, Math.max(0, (now - t0) / ROUTE_MS))
-      const n = Math.max(2, Math.ceil(easeOut(t) * pts.length))
-      src.setData(lineOf(pts.slice(0, n)))
-      if (t < 1) anim.current = requestAnimationFrame(step)
-    }
-    anim.current = requestAnimationFrame(step)
   }, [map, baseZoom])
+
+  // Draw the road route from HQ: zoom out to the trip right away with a dashed
+  // placeholder, then trace the real road path (700ms) once routing answers.
+  const drawRoute = useCallback((to, label) => {
+    if (!map) return
+    cancelAnimationFrame(anim.current)
+    request.current?.abort()
+    const ctrl = new AbortController()
+    request.current = ctrl
+    const line = map.getSource('atlas-route')
+    const pending = map.getSource('atlas-route-pending')
+    const straight = [[HQ.lng, HQ.lat], [to.lng, to.lat]]
+    setRoute({ to, label, trip: null })
+    line?.setData(EMPTY_LINE)
+    pending?.setData(lineOf(straight))
+    fit(straight)
+
+    routeBetween(HQ, to, ctrl.signal).then((trip) => {
+      if (ctrl.signal.aborted) return
+      const eta = etaFrom(trip.minutes)
+      setRoute({ to, label, trip: { ...trip, eta } })
+      pending?.setData(EMPTY_LINE)
+      // An estimate is drawn dashed so it never passes for a real road path.
+      if (map.getLayer('atlas-route-line')) {
+        map.setPaintProperty('atlas-route-line', 'line-dasharray', trip.estimated ? [2, 1.5] : undefined)
+        map.setPaintProperty('atlas-route-glow', 'line-opacity', trip.estimated ? 0 : 0.22)
+      }
+      fit(trip.coords)
+      const pts = trip.coords
+      if (!line) return
+      if (prefersReducedMotion()) { line.setData(lineOf(pts)); return }
+      const t0 = performance.now() + 120
+      const step = (now) => {
+        const t = Math.min(1, Math.max(0, (now - t0) / ROUTE_MS))
+        const n = Math.max(2, Math.ceil(easeOut(t) * pts.length))
+        line.setData(lineOf(pts.slice(0, n)))
+        if (t < 1) anim.current = requestAnimationFrame(step)
+      }
+      anim.current = requestAnimationFrame(step)
+    }).catch(() => { /* superseded by a newer route */ })
+  }, [map, fit])
 
   const clearRoute = useCallback(() => {
     cancelAnimationFrame(anim.current)
+    request.current?.abort()
     map?.getSource('atlas-route')?.setData(EMPTY_LINE)
+    map?.getSource('atlas-route-pending')?.setData(EMPTY_LINE)
     setRoute(null)
   }, [map])
 
@@ -315,8 +353,7 @@ function LiveMap({ onClose }) {
       if (focus.kind === 'participant') {
         const p = queue.find((q) => q.id === focus.id)
         if (!p) return
-        setRoute({ to: p, label: `${p.name.toUpperCase()} · ${formatMiles(p.distMi).toUpperCase()}` })
-        drawRoute(p)
+        drawRoute(p, p.name.toUpperCase())
         return
       }
       const team = TEAMS.find((t) => t.id === focus.id)
@@ -327,14 +364,13 @@ function LiveMap({ onClose }) {
         return
       }
       setSelected(p.id)
-      setRoute({ to: p, label: `TEAM ${team.short.toUpperCase()} · ${s.status === 'insession' ? 'ON SITE' : `EN ROUTE · ${s.start}`}` })
-      drawRoute(p)
+      drawRoute(p, `TEAM ${team.short.toUpperCase()} · ${s.status === 'insession' ? 'ON SITE' : `DUE ${s.start}`}`)
     }
     if (map.isStyleLoaded()) go()
     else map.once('style.load', go)
   }, [map, focus]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  useEffect(() => () => cancelAnimationFrame(anim.current), [])
+  useEffect(() => () => { cancelAnimationFrame(anim.current); request.current?.abort() }, [])
 
   const recenter = () => {
     if (!map || baseZoom == null) return
@@ -359,7 +395,12 @@ function LiveMap({ onClose }) {
         hqHost.get('hq').el,
       )}
       {route && routeHost.get('route') && createPortal(
-        <span key={route.label} className="atlas-map-marker atlas-map-marker--destination">{route.label}</span>,
+        <span key={route.label} className="atlas-map-marker atlas-map-marker--destination">
+          {route.label}
+          <span key={route.trip ? 'trip' : 'wait'} className="atlas-map-marker-eta atlas-status-line">
+            {route.trip ? ` · ETA ${route.trip.eta} · ${formatDrive(route.trip.minutes).toUpperCase()}` : ' · ROUTING…'}
+          </span>
+        </span>,
         routeHost.get('route').el,
       )}
 
@@ -383,6 +424,7 @@ function LiveMap({ onClose }) {
       {selectedItem && (
         <InfoTile
           participant={selectedItem}
+          trip={route?.to.id === selectedItem.id ? route.trip ?? 'loading' : null}
           onRoute={() => focusParticipant(selectedItem.id)}
           onDismiss={() => setSelected(null)}
           onCloseMap={onClose}
@@ -578,8 +620,46 @@ function QueuePanel({ shown, onClose }) {
   )
 }
 
+// Drive from HQ: time, distance and arrival if the team left now.
+function TripPanel({ trip }) {
+  const loading = trip === 'loading'
+  return (
+    <div className={`atlas-trip${loading ? ' is-loading' : ''}${trip.estimated ? ' is-estimated' : ''}`} role="status" aria-live="polite">
+      <div className="atlas-trip-head">
+        <span className="atlas-eyebrow atlas-trip-eyebrow">DRIVE FROM HQ</span>
+        {!loading && (
+          <span className="atlas-trip-source" title={trip.estimated ? trip.reason : 'Road route from OpenStreetMap data (OSRM). No live traffic.'}>
+            {trip.estimated ? 'ESTIMATE' : 'ROAD ROUTE'}
+          </span>
+        )}
+      </div>
+      {loading ? (
+        <div className="atlas-trip-wait"><span className="atlas-queue-sync-dot" aria-hidden="true" />Finding the road route…</div>
+      ) : (
+        <div key={`${trip.minutes}-${trip.miles}`} className="atlas-trip-grid atlas-swap-in">
+          <div>
+            <div className="atlas-trip-value atlas-trip-value--accent">{trip.eta}</div>
+            <div className="atlas-trip-label">ETA if leaving now</div>
+          </div>
+          <div>
+            <div className="atlas-trip-value">{formatDrive(trip.minutes)}</div>
+            <div className="atlas-trip-label">drive</div>
+          </div>
+          <div>
+            <div className="atlas-trip-value">{trip.miles.toFixed(1)} mi</div>
+            <div className="atlas-trip-label">{trip.estimated ? 'approx.' : 'by road'}</div>
+          </div>
+        </div>
+      )}
+      {!loading && trip.estimated && (
+        <div className="atlas-trip-note">Routing service unreachable, so this is a straight-line estimate.</div>
+      )}
+    </div>
+  )
+}
+
 // Info and actions for the dot that was clicked.
-function InfoTile({ participant: p, onRoute, onDismiss, onCloseMap }) {
+function InfoTile({ participant: p, trip, onRoute, onDismiss, onCloseMap }) {
   const { openBooking, triggerRef, startDraft } = useSchedule()
   const { canBook } = useRole()
   const s = p.session
@@ -615,6 +695,8 @@ function InfoTile({ participant: p, onRoute, onDismiss, onCloseMap }) {
           </div>
         </div>
       </div>
+
+      {trip && <TripPanel trip={trip} />}
 
       <div className="atlas-map-detail-actions">
         <button type="button" className="atlas-map-detail-contact" onClick={onRoute}>

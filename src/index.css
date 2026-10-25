@@ -1284,7 +1284,7 @@ button:disabled::after { display: none; }
 
 
 .atlas-map-zoom-status {
-    @apply absolute right-10 bottom-[14.75rem] z-50 px-3.5 py-2 rounded-[0.875rem];
+    @apply absolute right-[7.5rem] bottom-10 z-50 px-3.5 py-2 rounded-[0.875rem];
     background: rgba(34, 36, 40, 0.9);
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
@@ -1344,7 +1344,7 @@ button:disabled::after { display: none; }
 @media (prefers-reduced-motion: reduce) {
     .atlas-map, .atlas-map[data-state="closing"] { animation: fade 120ms linear backwards; }
     .atlas-map-canvas, .atlas-map-chrome, .atlas-map-zoom-controls, .atlas-map-zoom-status, .atlas-map-marker,
-    .atlas-map-info, .atlas-app-menu-sub, .atlas-sync-dots i { animation: none !important; }
+    .atlas-map-info, .atlas-app-menu-sub, .atlas-sync-dots i, .atlas-trip-wait .atlas-queue-sync-dot { animation: none !important; }
     .atlas-map-dot, .atlas-map-dot-core { transition: opacity 120ms linear; }
 }
 
@@ -1569,6 +1569,22 @@ button:disabled::after { display: none; }
     background: rgba(34, 36, 40, 0.92);
     border: 1px solid rgba(255, 255, 255, 0.06);
 }
+
+/* Drive from HQ inside the info tile */
+.atlas-trip { @apply rounded-2xl px-4 py-3.5 flex flex-col gap-2.5 bg-[rgba(0,229,255,0.05)]; box-shadow: inset 0 0 0 1px rgba(0, 229, 255, 0.16); }
+.atlas-trip.is-estimated { @apply bg-[rgba(255,255,255,0.03)]; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08); }
+.atlas-trip-head { @apply flex items-center justify-between; }
+.atlas-trip-eyebrow { @apply !text-[var(--accent)]; }
+.atlas-trip-source { @apply text-[9px] font-bold text-[var(--text-muted)] cursor-help; letter-spacing: 0.1em; }
+.atlas-trip-wait { @apply flex items-center gap-2 text-sm text-[var(--text-secondary)]; }
+.atlas-trip-wait .atlas-queue-sync-dot { background: var(--accent); animation: breathe 1.2s var(--ease-loop) infinite; }
+.atlas-trip-grid { @apply grid grid-cols-3 gap-3; }
+.atlas-trip-value { @apply text-lg font-semibold tabular-nums leading-tight; }
+.atlas-trip-value--accent { @apply text-[var(--accent)]; }
+.atlas-trip.is-estimated .atlas-trip-value--accent { @apply text-[var(--text-primary)]; }
+.atlas-trip-label { @apply text-[11px] text-[var(--text-secondary)]; }
+.atlas-trip-note { @apply text-[11px] text-[var(--text-muted)] leading-snug; }
+.atlas-map-marker-eta { @apply inline; }
 
 /* ---------- App-wide right-click menu ---------- */
 .atlas-app-menu { @apply min-w-[15rem] overflow-visible; }
