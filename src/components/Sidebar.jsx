@@ -1,9 +1,9 @@
 import { useState } from 'react'
-import { pressProps } from '../motion/motion.js'
 import {
   CalendarIcon, CalendarSquareIcon, DashboardIcon, LogoIcon, ParticipantsIcon,
   SettingsIcon, TeamsIcon, TeamsSimpleIcon,
 } from './Icons.jsx'
+import RoleSwitch from './RoleSwitch.jsx'
 
 // The Day and Week designs share one rail; the Month design has its own
 // ordering and an avatar at the bottom. `variant` picks between them.
@@ -33,15 +33,17 @@ export default function Sidebar({ variant = 'default' }) {
   const [active, setActive] = useState(rail.nav[0].id)
 
   const renderItem = ({ id, title, Icon }) => (
-    <div
+    <button
       key={id}
+      type="button"
       className={`atlas-rail-item${active === id ? ' is-active' : ''}`}
       title={title}
+      aria-label={title}
       aria-pressed={active === id}
-      {...pressProps(() => setActive(id), title)}
+      onClick={() => setActive(id)}
     >
       <Icon />
-    </div>
+    </button>
   )
 
   return (
@@ -56,13 +58,10 @@ export default function Sidebar({ variant = 'default' }) {
         {rail.nav.map(renderItem)}
       </nav>
 
-      {variant === 'month' ? (
-        <div className="atlas-sidebar-avatar atlas-well-sm" />
-      ) : (
-        <div className="atlas-sidebar-footer">
-          {rail.footer.map(renderItem)}
-        </div>
-      )}
+      <div className="atlas-sidebar-footer">
+        {rail.footer.map(renderItem)}
+        <RoleSwitch />
+      </div>
     </aside>
   )
 }

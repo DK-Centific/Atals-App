@@ -1,15 +1,14 @@
 import { useState } from 'react'
-import { pressProps } from '../../motion/motion.js'
 import { teamShort } from '../../data/schedule.js'
 import { StatusDot } from '../StatusLegend.jsx'
 
 // Hero card for the session currently in progress, with its route map.
-export default function ActiveSessionCard({ session }) {
+export default function ActiveSessionCard({ session, onOpenMap }) {
   if (!session) return null
 
   return (
     <section className="atlas-live-card atlas-raised">
-      <div className="atlas-live-card-body atlas-well">
+      <div key={session.id} className="atlas-live-card-body atlas-well atlas-swap-in">
         <div className="atlas-live-card-arcs">
           <svg width="100%" height="100%" preserveAspectRatio="none">
             <path d="M0,0 Q150,150 400,0" fill="none" stroke="var(--accent)" strokeWidth="1" />
@@ -22,7 +21,7 @@ export default function ActiveSessionCard({ session }) {
           IN SESSION • ATLAS TEAM {teamShort(session.team).toUpperCase()}
         </div>
 
-        <RouteMap session={session} />
+        <RouteMap session={session} onOpenMap={onOpenMap} />
 
         <div className="atlas-live-card-name">{session.name}</div>
         <div className="atlas-live-card-time">
@@ -47,12 +46,12 @@ export default function ActiveSessionCard({ session }) {
 const ZOOM_MIN = 1
 const ZOOM_MAX = 2.5
 
-function RouteMap({ session }) {
+function RouteMap({ session, onOpenMap }) {
   const [zoom, setZoom] = useState(1)
   const step = (d) => setZoom((z) => Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, +(z + d).toFixed(2))))
 
   return (
-    <div className="atlas-route-map-frame atlas-well-sm">
+    <div className="atlas-route-map-frame atlas-well-sm" data-map-source>
       <svg className="atlas-route-map" viewBox="0 0 400 210" preserveAspectRatio="xMidYMid slice" style={{ transform: `scale(${zoom})` }}>
         <rect x="20" y="18" width="110" height="50" rx="6" fill="rgba(255,255,255,0.025)" />
         <rect x="270" y="120" width="110" height="70" rx="6" fill="rgba(255,255,255,0.025)" />
@@ -81,14 +80,20 @@ function RouteMap({ session }) {
       </div>
 
       <div className="atlas-route-zoom">
-        <div
-          className={`atlas-map-zoom atlas-map-zoom--in${zoom >= ZOOM_MAX ? ' atlas-map-zoom--disabled' : ''}`}
-          {...pressProps(() => step(0.5), 'Zoom in')}
-        >+</div>
-        <div
-          className={`atlas-map-zoom${zoom <= ZOOM_MIN ? ' atlas-map-zoom--disabled' : ''}`}
-          {...pressProps(() => step(-0.5), 'Zoom out')}
-        >−</div>
+        <button
+          type="button"
+          className="atlas-map-zoom atlas-map-zoom--in"
+          aria-label="Zoom in"
+          disabled={zoom >= ZOOM_MAX}
+          onClick={() => step(0.5)}
+        >+</button>
+        <button
+          type="button"
+          className="atlas-map-zoom"
+          aria-label="Zoom out"
+          disabled={zoom <= ZOOM_MIN}
+          onClick={() => step(-0.5)}
+        >−</button>
       </div>
 
       <div className="atlas-route-address">
@@ -98,6 +103,14 @@ function RouteMap({ session }) {
         </svg>
         <span className="atlas-route-address-text">{session.location}</span>
       </div>
+
+      <button type="button" className="atlas-route-map-open" aria-haspopup="dialog" onClick={onOpenMap}>
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <path d="M1 6v16l7-4 8 4 7-4V2l-7 4-8-4-7 4z" />
+          <path d="M8 2v16M16 6v16" />
+        </svg>
+        View Map
+      </button>
     </div>
   )
 }

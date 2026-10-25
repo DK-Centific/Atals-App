@@ -2,7 +2,7 @@ import { STATUS, teamShort, toMinutes } from '../../data/schedule.js'
 import { StatusDot } from '../StatusLegend.jsx'
 import { useBookingTriggers } from '../../state/ScheduleContext.jsx'
 
-export const HOUR_HEIGHT = 80 // px per hour row, matches .atlas-week-slot
+export const HOUR_HEIGHT = 5 // rem per hour row, matches .atlas-week-slot
 
 // Status styling lives in index.css under .atlas-week-event--{status}.
 const EVENT_CLASS = {
@@ -26,15 +26,15 @@ export default function CalendarEvent({ session, lane = 0, lanes = 1, style }) {
 
   return (
     <div
-      className={`${EVENT_CLASS[session.status]} atlas-rise`}
-      style={{ top, height, ...laneStyle, ...style }}
+      className={`${EVENT_CLASS[session.status]} atlas-row-in`}
+      style={{ top: `${top}rem`, height: `${height}rem`, ...laneStyle, ...style }}
       title={`${session.name} · ${session.start} - ${session.end}`}
       {...triggers(session)}
       aria-label={`${session.name}, ${session.start} to ${session.end}`}
     >
       <div className="atlas-week-event-status">
         <StatusDot status={session.status} pulse={live} />
-        <span className="atlas-eyebrow atlas-week-event-label">{STATUS[session.status].weekLabel}</span>
+        <span key={session.status} className="atlas-eyebrow atlas-week-event-label atlas-status-line">{STATUS[session.status].weekLabel}</span>
       </div>
       <div className="atlas-week-event-client">{session.short}</div>
       <div className="atlas-week-event-time">{session.start} - {session.end}</div>

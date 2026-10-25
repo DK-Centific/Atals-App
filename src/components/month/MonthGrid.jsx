@@ -1,6 +1,5 @@
 import { TODAY } from '../../data/schedule.js'
 import { longDayLabel } from '../../lib/dates.js'
-import { pressProps } from '../../motion/motion.js'
 
 const DOW = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN']
 
@@ -12,7 +11,8 @@ const CHIP_CLASS = {
 }
 
 // Month calendar. `cells` come from monthGrid(); `chipsFor(date)` gives the status markers.
-// The grid re-keys on month change so it slides in from the side it came from.
+// The grid re-keys on month change so it slides in from the side it came from;
+// each status chip is a small bar that grows from the left.
 export default function MonthGrid({ cells, chipsFor, selected, onSelect, slide, firstRender }) {
   return (
     <section className="atlas-month">
@@ -24,16 +24,18 @@ export default function MonthGrid({ cells, chipsFor, selected, onSelect, slide, 
           const today = c.date === TODAY
           const chips = chipsFor(c.date)
           return (
-            <div
+            <button
               key={c.date}
-              className={`atlas-month-day${c.other ? ' is-other-month' : ''}${today ? ' is-today' : ''}${selected === c.date && !today ? ' is-selected' : ''}${firstRender ? ' atlas-rise' : ''}`}
-              style={firstRender ? { animationDelay: `${Math.floor(i / 7) * 50 + (i % 7) * 15}ms` } : undefined}
+              type="button"
+              className={`atlas-month-day${c.other ? ' is-other-month' : ''}${today ? ' is-today' : ''}${selected === c.date && !today ? ' is-selected' : ''}${firstRender ? ' atlas-row-in' : ''}`}
+              style={firstRender ? { animationDelay: `${Math.floor(i / 7) * 35 + (i % 7) * 10}ms` } : undefined}
               aria-pressed={selected === c.date}
-              {...pressProps(() => onSelect(c.date), `${longDayLabel(c.date)}, ${chips.length} sessions`)}
+              aria-label={`${longDayLabel(c.date)}, ${chips.length} sessions`}
+              onClick={(e) => onSelect(c.date, e.currentTarget)}
             >
               <span className="atlas-month-day-num">{c.day}</span>
-              {chips.map((status, j) => <div key={j} className={CHIP_CLASS[status]} />)}
-            </div>
+              {chips.map((status, j) => <span key={`${status}-${j}`} className={`${CHIP_CLASS[status]} atlas-reveal-x`} />)}
+            </button>
           )
         })}
       </div>

@@ -20,27 +20,74 @@ export const TODAY = '2024-10-24'
 
 
 // name: full name (Day view), short: Week view abbreviation, summary: Month summary bar.
+// Every booking points at its OneForma participant (participantId = OF id), whose
+// address and map position come from the OF feed.
 export const SESSIONS = [
   {
+    id: 's6', date: '2024-10-24', start: '08:00', end: '08:45', status: 'completed', team: 'gamma',
+    name: 'Priya Nair', short: 'P. Nair', summary: 'Priya Nair', location: '1488 151st Ave NE',
+    participantId: 'OF-10265',
+  },
+  {
     id: 's1', date: '2024-10-24', start: '09:00', end: '10:30', status: 'completed', team: 'alpha',
-    name: 'Sarah Jenkins', short: 'S. Jenkins', summary: 'Sarah Jenkins', location: 'Remote Link',
+    name: 'Sarah Jenkins', short: 'S. Jenkins', summary: 'Sarah Jenkins', location: '3024 145th Ave NE',
+    participantId: 'OF-10230',
   },
   {
     id: 's2', date: '2024-10-24', start: '11:00', end: '12:00', status: 'cancelled', team: 'beta',
-    name: 'Robert Chen', short: 'R. Chen', summary: 'Robert Chen', location: '451 Appian Way',
+    name: 'Robert Chen', short: 'R. Chen', summary: 'Robert Chen', location: '3412 161st Ave NE',
+    participantId: 'OF-10237',
+  },
+  {
+    id: 's7', date: '2024-10-24', start: '12:15', end: '13:30', status: 'completed', team: 'gamma',
+    name: 'Omar Haddad', short: 'O. Haddad', summary: 'Omar Haddad', location: '17440 NE 42nd St',
+    participantId: 'OF-10272',
   },
   {
     id: 's3', date: '2024-10-24', start: '14:30', end: '16:00', status: 'insession', team: 'alpha',
-    name: 'Evelyn Vance', short: 'E. Vance', summary: 'Evelyn Vance', location: '742 Evergreen Terr.',
-    protocol: 'Assessment', eta: '14:25', timezone: 'GMT',
+    name: 'Evelyn Vance', short: 'E. Vance', summary: 'Evelyn Vance', location: '13802 NE 34th St',
+    participantId: 'OF-10244',
+    protocol: 'Assessment', eta: '14:25', timezone: 'PT',
   },
   {
     id: 's4', date: '2024-10-24', start: '16:30', end: '17:45', status: 'booked', team: 'beta',
-    name: 'Marcus Thorne', short: 'M. Thorne', summary: 'Marcus Thorne', location: '1200 Pacific Coast Hwy',
+    name: 'Marcus Thorne', short: 'M. Thorne', summary: 'Marcus Thorne', location: '3915 139th Ave NE',
+    participantId: 'OF-10251',
+  },
+  {
+    id: 's8', date: '2024-10-24', start: '17:00', end: '18:00', status: 'booked', team: 'alpha',
+    name: 'Ethan Brooks', short: 'E. Brooks', summary: 'Ethan Brooks', location: '3374 143rd Ave NE',
+    participantId: 'OF-10370',
   },
   {
     id: 's5', date: '2024-10-24', start: '19:00', end: '20:30', status: 'booked', team: 'gamma',
-    name: 'Dr. Alana Rivera', short: 'A. Rivera', summary: 'Dr. Rivera', location: '88 Constellation Blvd',
+    name: 'Dr. Alana Rivera', short: 'A. Rivera', summary: 'Dr. Rivera', location: '16257 NE 35th St',
+    participantId: 'OF-10258',
+  },
+  {
+    id: 's9', date: '2024-10-25', start: '10:00', end: '11:30', status: 'booked', team: 'beta',
+    name: 'Lena Fischer', short: 'L. Fischer', summary: 'Lena Fischer', location: '1605 125th Ave NE',
+    participantId: 'OF-10279',
+  },
+  {
+    id: 's10', date: '2024-10-25', start: '14:00', end: '15:00', status: 'booked', team: 'alpha',
+    name: 'June Park', short: 'J. Park', summary: 'June Park', location: '1463 114th Ave NE',
+    participantId: 'OF-10293',
+  },
+  {
+    id: 's11', date: '2024-10-22', start: '13:00', end: '14:00', status: 'completed', team: 'gamma',
+    name: 'Grace Okafor', short: 'G. Okafor', summary: 'Grace Okafor', location: '15319 NE 1st St',
+    participantId: 'OF-10307',
+  },
+  {
+    id: 's12', date: '2024-10-23', start: '10:00', end: '11:00', status: 'completed', team: 'beta',
+    name: 'Sofia Rossi', short: 'S. Rossi', summary: 'Sofia Rossi', location: '3937 136th Ave NE',
+    participantId: 'OF-10377',
+  },
+  {
+    id: 's13', date: '2024-10-26', start: '09:30', end: '11:00', status: 'booked', team: 'gamma',
+    name: 'Kwame Mensah', short: 'K. Mensah', summary: 'Kwame Mensah', location: '17509 NE 26th St',
+    participantId: 'OF-10384',
   },
 ]
 
