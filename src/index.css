@@ -1585,6 +1585,8 @@ button:disabled::after { display: none; }
 .atlas-trip-label { @apply text-[11px] text-[var(--text-secondary)]; }
 .atlas-trip-note { @apply text-[11px] text-[var(--text-muted)] leading-snug; }
 .atlas-map-marker-eta { @apply inline; }
+/* When the route arrives from above, the label sits under the pin so it never covers the line. */
+.atlas-map-marker--below { transform: translate(-50%, 1.1rem); }
 
 /* ---------- App-wide right-click menu ---------- */
 .atlas-app-menu { @apply min-w-[15rem] overflow-visible; }

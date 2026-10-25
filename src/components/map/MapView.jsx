@@ -395,7 +395,7 @@ function LiveMap({ onClose }) {
         hqHost.get('hq').el,
       )}
       {route && routeHost.get('route') && createPortal(
-        <span key={route.label} className="atlas-map-marker atlas-map-marker--destination">
+        <span key={route.label} className={`atlas-map-marker atlas-map-marker--destination${route.to.lat < HQ.lat ? ' atlas-map-marker--below' : ''}`}>
           {route.label}
           <span key={route.trip ? 'trip' : 'wait'} className="atlas-map-marker-eta atlas-status-line">
             {route.trip ? ` · ETA ${route.trip.eta} · ${formatDrive(route.trip.minutes).toUpperCase()}` : ' · ROUTING…'}
