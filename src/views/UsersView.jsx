@@ -95,7 +95,15 @@ function UserForm({ user, self, onSave, onReset, onToggle, onClose }) {
   const [form, setForm] = useState(() => (user ? { ...user, shortName: user.shortName ?? '' } : EMPTY))
   const [error, setError] = useState(null)
   const [busy, setBusy] = useState(false)
+  // 'reset' | 'toggle' while that Auth call runs (a few seconds): the button says so,
+  // and nothing can be clicked twice (two resets would make two temp passwords).
+  const [pending, setPending] = useState(null)
   const set = (key) => (value) => setForm((f) => ({ ...f, [key]: value }))
+  const run = (kind, action) => async () => {
+    if (pending || busy) return
+    setPending(kind)
+    try { await action() } finally { setPending(null) }
+  }
 
   const submit = async (e) => {
     e.preventDefault()
@@ -142,16 +150,18 @@ function UserForm({ user, self, onSave, onReset, onToggle, onClose }) {
         </label>
         {!adding && !self && (
           <div className="atlas-user-more">
-            <button type="button" className="atlas-btn-ghost atlas-raised-sm" onClick={onReset} disabled={busy}>Reset password</button>
-            <button type="button" className={user.active ? 'atlas-btn-danger atlas-raised-sm' : 'atlas-btn-ghost atlas-raised-sm'} onClick={onToggle} disabled={busy}>
-              {user.active ? 'Turn off sign-in' : 'Turn sign-in back on'}
+            <button type="button" className="atlas-btn-ghost atlas-raised-sm" onClick={run('reset', onReset)} disabled={busy || Boolean(pending)} aria-busy={pending === 'reset'}>
+              {pending === 'reset' ? 'Resetting…' : 'Reset password'}
+            </button>
+            <button type="button" className={user.active ? 'atlas-btn-danger atlas-raised-sm' : 'atlas-btn-ghost atlas-raised-sm'} onClick={run('toggle', onToggle)} disabled={busy || Boolean(pending)} aria-busy={pending === 'toggle'}>
+              {pending === 'toggle' ? 'Saving…' : user.active ? 'Turn off sign-in' : 'Turn sign-in back on'}
             </button>
           </div>
         )}
       </div>
       <footer className="atlas-sheet-foot">
         <p className="atlas-signin-error" role="alert">{error ?? ''}</p>
-        <button type="submit" className="atlas-btn-primary" disabled={busy}>{busy ? 'Saving…' : adding ? 'Add and make temp password' : 'Save changes'}</button>
+        <button type="submit" className="atlas-btn-primary" disabled={busy || Boolean(pending)} aria-busy={busy}>{busy ? 'Saving…' : adding ? 'Add and make temp password' : 'Save changes'}</button>
       </footer>
     </form>
   )
@@ -307,8 +317,8 @@ export default function UsersView() {
                 user={editing}
                 self={editing.email === me?.email}
                 onSave={save}
-                onReset={() => void reset(editing)}
-                onToggle={() => void toggle(editing)}
+                onReset={() => reset(editing)}
+                onToggle={() => toggle(editing)}
                 onClose={close}
               />
             )}

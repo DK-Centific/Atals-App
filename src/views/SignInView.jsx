@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { LogoIcon } from '../components/Icons.jsx'
+import { prefetchSalt } from '../lib/auth/api.ts'
 import { passwordProblem } from '../lib/auth/crypto.ts'
 import { useAuth } from '../state/AuthContext.tsx'
 
@@ -52,6 +53,13 @@ export default function SignInView() {
   useEffect(() => { setPassword(''); setNext(''); setConfirm(''); setError(null) }, [stage])
 
   const fail = (message) => { setError(message); setShake((n) => n + 1) }
+
+  // Start the salt lookup while the password is being typed (one Auth call saved on Sign in).
+  useEffect(() => {
+    if (stage !== 'signedOut') return undefined
+    const t = setTimeout(() => prefetchSalt(email), 400)
+    return () => clearTimeout(t)
+  }, [email, stage])
 
   const submit = async (e) => {
     e.preventDefault()

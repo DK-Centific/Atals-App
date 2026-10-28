@@ -47,6 +47,33 @@ async function call(req: AuthRequest): Promise<AuthReply> {
 
 const clean = (email: string) => email.trim().toLowerCase()
 
+// Each Auth flow call takes a few seconds, and sign-in needs the salt before it can
+// hash. So the sign-in screen asks for the salt as soon as the email looks complete
+// (prefetchSalt), while the password is still being typed; pressing Sign in then
+// costs one call, not two. Salts are not secret (unknown emails get a fake one).
+// Kept for this page only.
+const LOOKS_LIKE_EMAIL = /^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/
+const salts = new Map<string, Promise<string>>()
+
+export function prefetchSalt(email: string): void {
+  const e = clean(email)
+  if (!LOOKS_LIKE_EMAIL.test(e) || salts.has(e)) return
+  const p = call({ op: 'salt', email: e }).then(({ salt }) => {
+    if (!salt) throw new AuthError(500, 'The sign-in service gave no salt.')
+    return salt
+  })
+  p.catch(() => salts.delete(e))
+  salts.set(e, p)
+}
+
+function saltFor(email: string): Promise<string> {
+  prefetchSalt(email)
+  return salts.get(clean(email)) ?? call({ op: 'salt', email: clean(email) }).then(({ salt }) => {
+    if (!salt) throw new AuthError(500, 'The sign-in service gave no salt.')
+    return salt
+  })
+}
+
 // The Auth flow names roles 'Admin' | 'Scheduler' | 'Moderator'; the app uses lowercase ids.
 const fromFlowRole = (role: string): Role => role.toLowerCase() as Role
 const toFlowRole = (role: Role): string => (AUTH_URL ? role.charAt(0).toUpperCase() + role.slice(1) : role)
@@ -64,18 +91,25 @@ export async function needsSetup(): Promise<boolean> {
 }
 
 export async function signIn(email: string, password: string): Promise<AuthSession> {
-  const { salt } = await call({ op: 'salt', email: clean(email) })
-  if (!salt) throw new AuthError(500, 'The sign-in service gave no salt.')
-  const r = await call({ op: 'signin', email: clean(email), hash: await hashPassword(password, salt) })
+  const salt = await saltFor(email)
+  let r: AuthReply
+  try {
+    r = await call({ op: 'signin', email: clean(email), hash: await hashPassword(password, salt) })
+  } catch (err) {
+    // The salt may be stale (an Admin reset the password since): ask afresh next time.
+    salts.delete(clean(email))
+    throw err
+  }
   if (!r.token || !r.expiresAt || !r.user) throw new AuthError(500, 'The sign-in service gave an incomplete answer.')
   return { token: r.token, expiresAt: r.expiresAt, user: withRole(r.user) }
 }
 
 export async function changePassword(token: string, email: string, current: string, next: string): Promise<void> {
-  const { salt } = await call({ op: 'salt', email: clean(email) })
-  if (!salt) throw new AuthError(500, 'The sign-in service gave no salt.')
+  // Reuses the salt from sign-in, so this is one Auth call.
+  const salt = await saltFor(email)
   const fresh = await saltedHash(next)
   await call({ op: 'change-password', token, currentHash: await hashPassword(current, salt), newSalt: fresh.salt, newHash: fresh.hash })
+  salts.set(clean(email), Promise.resolve(fresh.salt))
 }
 
 export async function signOut(token: string): Promise<void> {
