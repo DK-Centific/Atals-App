@@ -85,7 +85,7 @@ export default function SignInView() {
         noValidate
       >
         <div className="atlas-signin-brand">
-          <span className="atlas-signin-logo atlas-well-sm"><LogoIcon /></span>
+          <span className="atlas-signin-logo atlas-well-sm"><LogoIcon label="Centific" /></span>
           <span className="atlas-eyebrow">{copy.eyebrow}</span>
         </div>
         <h1 className="atlas-signin-title">{copy.title}</h1>

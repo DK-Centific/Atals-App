@@ -761,6 +761,13 @@ button:disabled::after { display: none; }
 .atlas-sidebar { @apply w-24 flex-shrink-0 m-6 rounded-[2rem] flex flex-col items-center py-8 justify-between z-20; }
 .atlas-sidebar-brand { @apply flex flex-col items-center gap-2; }
 .atlas-sidebar-logo { @apply w-14 h-14 rounded-full flex items-center justify-center text-[var(--accent)]; }
+/* The PNG is a mask, so the mark takes the accent of whichever theme is on. */
+.atlas-logo-mark {
+    @apply block w-[58%] h-[58%];
+    background-color: currentColor;
+    -webkit-mask: url('./assets/centific-logo.png') center / contain no-repeat;
+    mask: url('./assets/centific-logo.png') center / contain no-repeat;
+}
 .atlas-sidebar-nav,
 .atlas-sidebar-footer { @apply flex flex-col gap-6; }
 .atlas-sidebar-avatar {
@@ -1939,7 +1946,6 @@ button:disabled::after { display: none; }
 .atlas-signin-card { @apply w-full max-w-[26rem] p-8 rounded-[2rem] flex flex-col gap-3; }
 .atlas-signin-brand { @apply flex items-center gap-3 mb-2; }
 .atlas-signin-logo { @apply w-10 h-10 rounded-full flex items-center justify-center text-[var(--accent)]; }
-.atlas-signin-logo svg { @apply w-5 h-5; }
 .atlas-signin-title { @apply text-4xl leading-tight; font-family: var(--font-serif); }
 .atlas-signin-text { @apply text-sm leading-relaxed text-[var(--text-secondary)]; }
 .atlas-signin-fields { @apply flex flex-col gap-4 mt-3; }
@@ -1977,7 +1983,6 @@ button:disabled::after { display: none; }
 }
 .atlas-checklist-brand { @apply flex items-center gap-3; }
 .atlas-checklist-logo { @apply w-10 h-10 rounded-full flex items-center justify-center text-[var(--accent)]; }
-.atlas-checklist-logo svg { @apply w-5 h-5; }
 .atlas-checklist-top-tools { @apply flex items-center gap-3; }
 .atlas-checklist-back { @apply text-xs font-semibold tracking-wider uppercase cursor-pointer text-[var(--text-secondary)]; }
 .atlas-checklist-sync {

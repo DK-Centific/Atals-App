@@ -1,11 +1,9 @@
 // Icon set used across the views (paths copied from the designs).
 
-export const LogoIcon = () => (
-  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-    <circle cx="12" cy="12" r="10" />
-    <path d="M12 2v20M2 12h20" />
-    <circle cx="12" cy="12" r="4" fill="var(--bg-main)" />
-  </svg>
+// The Centific mark, tinted with the theme accent. Pass a label where it is the
+// only thing naming the page; leave it out where it sits beside other branding.
+export const LogoIcon = ({ label }) => (
+  <span className="atlas-logo-mark" {...(label ? { role: 'img', 'aria-label': label } : { 'aria-hidden': true })} />
 )
 
 const NavSvg = ({ children }) => (
