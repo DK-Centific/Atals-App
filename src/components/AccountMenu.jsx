@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { DEMO, setDemo } from '../lib/oneforma/config.ts'
 import { useToast } from '../motion/Toast.jsx'
 import { useAuth } from '../state/AuthContext.tsx'
 import { useRole } from '../state/RoleContext.jsx'
@@ -13,7 +14,7 @@ const initials = (name) => name.split(/\s+/).filter(Boolean).slice(0, 2).map((w)
 // still being sent, so the next person on this device never sends them as theirs.
 export default function AccountMenu({ placement = 'rail' }) {
   const { user, signOut } = useAuth()
-  const { label } = useRole()
+  const { label, canBook } = useRole()
   const { entries } = useSync()
   const toast = useToast()
   const [open, setOpen] = useState(false)
@@ -40,6 +41,16 @@ export default function AccountMenu({ placement = 'rail' }) {
     void signOut()
   }
 
+  // Switching reloads into the other mode; real changes still on their way would
+  // wait until switching back, so finish sending them first.
+  const toggleDemo = () => {
+    if (unsent && !DEMO) {
+      toast(`${unsent} change${unsent > 1 ? 's are' : ' is'} still being saved. Switch to demo data once ${unsent > 1 ? 'they’re' : 'it’s'} done.`, 'error')
+      return
+    }
+    setDemo(!DEMO)
+  }
+
   return (
     <div ref={ref} className={`atlas-role atlas-role--${placement}`}>
       <button
@@ -60,6 +71,19 @@ export default function AccountMenu({ placement = 'rail' }) {
             <span className="atlas-account-email">{user.email}</span>
             <span className="atlas-eyebrow atlas-account-role">{label}</span>
           </div>
+          {canBook && (
+            <button
+              type="button"
+              role="menuitemcheckbox"
+              aria-checked={DEMO}
+              className="atlas-menu-item atlas-account-demo"
+              title={DEMO ? 'Back to the real OneForma participants and bookings' : 'Sample participants and bookings; nothing is saved, sent or emailed'}
+              onClick={toggleDemo}
+            >
+              <span>Demo data</span>
+              <span className={`atlas-account-switch${DEMO ? ' is-on' : ''}`} aria-hidden="true"><span /></span>
+            </button>
+          )}
           <button type="button" role="menuitem" className="atlas-menu-item atlas-account-signout" onClick={leave}>
             Sign out
           </button>

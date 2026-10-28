@@ -2,7 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import type { ReactNode } from 'react'
 import { ACTION_LABEL, EMAIL_FOR, toBookingRow } from '../lib/oneforma/actions.ts'
 import type { AtlasBooking } from '../lib/oneforma/actions.ts'
-import { DRY_RUN, OF_ENV } from '../lib/oneforma/config.ts'
+import { DRY_RUN, OF_ENV, storageKey } from '../lib/oneforma/config.ts'
 import {
   EVENT_LABEL, bookingRef, buildEvent, checkEvent, entityIdFor, isLinked, revisionKey,
 } from '../lib/oneforma/events.ts'
@@ -22,7 +22,7 @@ import type {
 // oldest first, never overtaking an earlier action for the same booking.
 
 // v2: one entry per Atlas action (v1 held bare OneForma events).
-const STORAGE_KEY = 'atlas_outbox_v2'
+const STORAGE_KEY = storageKey('atlas_outbox_v2')
 const MAX_ENTRIES = 500
 /** Longer than the 6s "Saved · Undo" note, so an undo can still withdraw it. */
 const UNDO_HOLD_MS = 10000

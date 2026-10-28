@@ -24,8 +24,32 @@ export const SOURCE_SYSTEM = 'atlas'
 export const TIMEZONE = 'America/Los_Angeles'
 export const RECORDING_PROVIDER = 'client-app'
 
-export const ACTION_URL: string | undefined = import.meta.env.VITE_ATLAS_ACTION_URL || undefined
-export const READ_URL: string | undefined = import.meta.env.VITE_ATLAS_READ_URL || undefined
+const DEMO_KEY = 'atlas_demo_v1'
+
+function readDemo(): boolean {
+  try { return window.localStorage.getItem(DEMO_KEY) === 'on' } catch { return false }
+}
+
+/**
+ * Demo data (per browser, Admin > account menu): sample participants and schedule, and
+ * nothing leaves this browser. No SharePoint save, no OneForma event, no email. Sign-in
+ * stays real. Read once at load; switching reloads the page.
+ */
+export const DEMO = readDemo()
+
+export function setDemo(on: boolean): void {
+  try {
+    if (on) window.localStorage.setItem(DEMO_KEY, 'on')
+    else window.localStorage.removeItem(DEMO_KEY)
+  } catch { /* storage off: stays as it is */ }
+  window.location.reload()
+}
+
+/** This mode's storage key, so demo bookings never mix with the real ones. */
+export const storageKey = (base: string): string => (DEMO ? `${base}_demo` : base)
+
+export const ACTION_URL: string | undefined = DEMO ? undefined : import.meta.env.VITE_ATLAS_ACTION_URL || undefined
+export const READ_URL: string | undefined = DEMO ? undefined : import.meta.env.VITE_ATLAS_READ_URL || undefined
 export const AUTH_URL: string | undefined = import.meta.env.VITE_ATLAS_AUTH_URL || undefined
 export const CHECKLIST_URL: string | undefined = import.meta.env.VITE_CHECKLIST_URL || undefined
 

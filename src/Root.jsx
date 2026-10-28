@@ -1,4 +1,5 @@
 import App from './App.jsx'
+import DemoBanner from './components/DemoBanner.jsx'
 import SignInView from './views/SignInView.jsx'
 import { useAuth } from './state/AuthContext.tsx'
 import { RoleProvider } from './state/RoleContext.jsx'
@@ -24,6 +25,7 @@ export default function Root() {
             <ParticipantProvider>
               <FilterProvider>
                 <MapProvider>
+                  <DemoBanner />
                   <App />
                 </MapProvider>
               </FilterProvider>

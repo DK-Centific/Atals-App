@@ -3,7 +3,7 @@
 // messages through the same rules the flow uses, so the dry run behaves like the real feed.
 
 import { SAMPLE_COORDS, SAMPLE_FEED } from '../../data/oneFormaFeedSample.ts'
-import { OF_PROJECT_ID, READ_URL } from './config.ts'
+import { OF_PROJECT_ID, READ_URL, storageKey } from './config.ts'
 import { emptyStats, fromRows, ingest } from './feed.ts'
 import { fetchRead } from './readFlow.ts'
 import type { OneformaSync } from './readFlow.ts'
@@ -44,7 +44,7 @@ export async function fetchParticipants(signal?: AbortSignal): Promise<Participa
 
 // Cache, then refresh (spec section 7): the last copy shows at once.
 // v2: participants keyed by OneForma userId (v1 held the old mock ids).
-const CACHE_KEY = 'atlas_of_cache_v2'
+const CACHE_KEY = storageKey('atlas_of_cache_v2')
 
 export function readCache(): ParticipantSnapshot | null {
   try {

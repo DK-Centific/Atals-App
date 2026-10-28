@@ -2,7 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { SESSIONS, toMinutes } from '../data/schedule.js'
 import { seedModerator } from '../data/moderators.js'
 import { fromBookingRow } from '../lib/oneforma/actions.ts'
-import { READ_URL } from '../lib/oneforma/config.ts'
+import { READ_URL, storageKey } from '../lib/oneforma/config.ts'
 import { QA_STAGE_LABEL } from '../lib/oneforma/events.ts'
 import { fetchRead } from '../lib/oneforma/readFlow.ts'
 import { nowIso } from '../lib/oneforma/time.ts'
@@ -18,8 +18,8 @@ const ScheduleContext = createContext(null)
 
 // v4: one moderator per session (moderator: email) instead of a team.
 // v3 copies are carried over; older ones are ignored.
-const STORAGE_KEY = 'atlas_schedule_v4'
-const V3_KEY = 'atlas_schedule_v3'
+const STORAGE_KEY = storageKey('atlas_schedule_v4')
+const V3_KEY = storageKey('atlas_schedule_v3')
 const TEAM_TO_SEED = { alpha: 0, beta: 1, gamma: 2 }
 
 const QA_RESULT_LABEL = { passed: 'Passed', failed: 'Failed', pending: 'Started', not_required: 'Not required' }

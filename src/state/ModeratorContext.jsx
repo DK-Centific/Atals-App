@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import { LOCAL_AUTH, listModerators } from '../lib/auth/api.ts'
 import { SEED_MODERATORS, firstName } from '../data/moderators.js'
+import { DEMO } from '../lib/oneforma/config.ts'
 import { useAuth } from './AuthContext.tsx'
 
 // Who can be booked: the active Moderator accounts (Admin > Users), so adding a
@@ -12,10 +13,11 @@ const byName = (a, b) => firstName(a).localeCompare(firstName(b))
 
 export function ModeratorProvider({ children }) {
   const { token } = useAuth()
-  const [moderators, setModerators] = useState(() => (LOCAL_AUTH ? [...SEED_MODERATORS].sort(byName) : []))
+  // Demo data uses the sample moderators the sample sessions are booked with.
+  const [moderators, setModerators] = useState(() => (LOCAL_AUTH || DEMO ? [...SEED_MODERATORS].sort(byName) : []))
 
   const refresh = useCallback(async () => {
-    if (!token) return
+    if (!token || DEMO) return
     try {
       const list = await listModerators(token)
       setModerators([...list].sort(byName))
