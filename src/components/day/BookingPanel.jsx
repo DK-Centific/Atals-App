@@ -19,7 +19,8 @@ import { EmailFields, ModeratorPicker, TextField, TimeField, emailSummary, notif
 const DEFAULTS = {
   date: TODAY, start: '17:00', end: '19:00', moderator: '',
   name: '', location: '', email: '', phone: '', notes: '', participantId: '', requestId: '',
-  emails: { participant: true, moderator: true },
+  // Off by default: participants are real people, so an email goes out only when someone ticks it.
+  emails: { participant: false, moderator: false },
 }
 
 // "New Booking" form: pick a day, a time range and the participant, then book. The

@@ -540,7 +540,7 @@ function AssignForm({ session }) {
   const { label: moderatorLabel, name: moderatorName } = useModerators()
   const { back, fail, saved, shakeKey } = useFormSheet(session)
   const [moderator, setModerator] = useState(session.moderator ?? '')
-  const [emails, setEmails] = useState({ participant: false, moderator: true })
+  const [emails, setEmails] = useState({ participant: false, moderator: false })
   const busy = useMemo(() => new Set(sessions
     .filter((s) => findConflict([s], { ...session, moderator: s.moderator }, session.id))
     .map((s) => s.moderator)), [sessions, session])
@@ -583,7 +583,7 @@ function RescheduleForm({ session }) {
   const { back, fail, saved, shakeKey } = useFormSheet(session)
   const [slot, setSlot] = useState({ date: session.date, start: session.start, end: session.end })
   const [reason, setReason] = useState('')
-  const [emails, setEmails] = useState({ participant: true, moderator: true })
+  const [emails, setEmails] = useState({ participant: false, moderator: false })
   const moderatorBox = useModeratorBox(session)
   const linked = isLinked(session)
   const set = (patch) => setSlot((f) => ({ ...f, ...patch }))
@@ -623,7 +623,7 @@ function CancelForm({ session }) {
   const { cancelSession } = useSchedule()
   const { back, fail, saved, shakeKey } = useFormSheet(session)
   const [reason, setReason] = useState('')
-  const [emails, setEmails] = useState({ participant: true, moderator: true })
+  const [emails, setEmails] = useState({ participant: false, moderator: false })
   const moderatorBox = useModeratorBox(session)
   const live = session.status === 'insession'
   // OneForma needs a reason for every cancellation it receives.

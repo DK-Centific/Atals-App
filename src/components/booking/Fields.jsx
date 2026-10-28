@@ -106,8 +106,8 @@ function EmailCheck({ label, hint, checked, disabled, onChange }) {
   )
 }
 
-// Who gets emailed on book, reschedule and cancel: two separate choices, both on
-// by default. `value` is { participant, moderator }. `moderator` says what the
+// Who gets emailed on book, reschedule and cancel: two separate choices, both off
+// by default (real participants), so nothing is sent unless someone ticks it. `value` is { participant, moderator }. `moderator` says what the
 // moderator box can do: 'on' (pickable), 'unassigned' (shown, off: an Admin
 // assigns later) or 'hidden' (this role doesn't email moderators here).
 export function EmailFields({ value, onChange, email, moderator = 'on', participantHidden = false }) {
