@@ -8,8 +8,21 @@ import { getToken } from '../auth/session.ts'
 import { READ_URL } from './config.ts'
 import type { BookingRow, ParticipantRow } from './types.ts'
 
+/**
+ * The OneForma relay's health, when the read flow reports it (optional; today's
+ * flow doesn't send it). lastContactAt includes a heartbeat at least every 15 min.
+ */
+export interface OneformaSync {
+  lastContactAt: string | null
+  lastEventAt?: string | null
+  lastEventCount?: number | null
+  lastError?: string | null
+  lastErrorAt?: string | null
+}
+
 export interface ReadBody {
   syncedAt?: string
+  oneformaSync?: OneformaSync | null
   me?: { email: string; displayName: string; role: string; shortName: string | null }
   participants?: ParticipantRow[]
   bookings?: Partial<BookingRow>[]

@@ -11,6 +11,7 @@ import { useQueue } from '../../state/ParticipantContext.jsx'
 import { formatMiles } from '../../lib/geo.js'
 import { bookingRouteMiles } from '../../lib/mileage.js'
 import { PlusIcon } from '../Icons.jsx'
+import QueueSyncStatus from '../sync/QueueSyncStatus.jsx'
 import { useModerators } from '../../state/ModeratorContext.jsx'
 import { useRole } from '../../state/RoleContext.jsx'
 import { EmailFields, ModeratorPicker, TextField, TimeField, emailSummary, notifyFrom } from '../booking/Fields.jsx'
@@ -170,7 +171,10 @@ export default function BookingPanel({ participant = null, onBooked = null }) {
       <div className="atlas-booking-participant">
         {!participant && (
           <label className="atlas-field">
-            <span className="atlas-eyebrow">FROM ONEFORMA QUEUE</span>
+            <span className="atlas-booking-queue-head">
+              <span className="atlas-eyebrow">FROM ONEFORMA QUEUE</span>
+              <QueueSyncStatus />
+            </span>
             <select
               className="atlas-input atlas-booking-pt-select"
               value={form.participantId}

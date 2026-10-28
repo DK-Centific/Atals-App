@@ -6,6 +6,7 @@ import { SAMPLE_COORDS, SAMPLE_FEED } from '../../data/oneFormaFeedSample.ts'
 import { OF_PROJECT_ID, READ_URL } from './config.ts'
 import { emptyStats, fromRows, ingest } from './feed.ts'
 import { fetchRead } from './readFlow.ts'
+import type { OneformaSync } from './readFlow.ts'
 import type { FeedStats, Participant } from './types.ts'
 
 export const usingSample = !READ_URL
@@ -15,6 +16,8 @@ export interface ParticipantSnapshot {
   participants: Participant[]
   stats: FeedStats
   fetchedAt: string
+  /** The relay's health from the read flow; null when it doesn't report it. */
+  oneformaSync?: OneformaSync | null
 }
 
 const wait = (ms: number, signal?: AbortSignal) => new Promise<void>((resolve, reject) => {
@@ -35,6 +38,7 @@ export async function fetchParticipants(signal?: AbortSignal): Promise<Participa
     participants,
     stats: { ...emptyStats(), items: participants.length, removed: participants.filter((p) => !p.active).length },
     fetchedAt: body.syncedAt ?? new Date().toISOString(),
+    oneformaSync: body.oneformaSync ?? null,
   }
 }
 

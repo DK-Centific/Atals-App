@@ -50,6 +50,7 @@ export function ParticipantProvider({ children }) {
     participants: data?.participants ?? [],
     stats: data?.stats ?? null,
     fetchedAt: data?.fetchedAt ?? null,
+    oneformaSync: data?.oneformaSync ?? null,
     hasData: Boolean(data),
     sync,
     syncNow,

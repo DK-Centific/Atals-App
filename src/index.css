@@ -1841,6 +1841,14 @@ button:disabled::after { display: none; }
 /* Sync sheet: above the booking drawer, so "Open booking" can hand over to it */
 .atlas-sheet-layer--top { @apply z-[910]; }
 .atlas-sync-sources { @apply flex flex-col gap-3; }
+
+/* OneForma feed badge in the New Booking queue header. */
+.atlas-booking-queue-head { @apply flex flex-wrap items-center justify-between gap-x-3 gap-y-1 min-w-0; }
+.atlas-booking-queue-head > .atlas-eyebrow { @apply whitespace-nowrap; }
+.atlas-queue-sync { @apply inline-flex items-center gap-1.5 min-w-0 text-[11px] font-medium text-[var(--text-secondary)] cursor-default; }
+.atlas-queue-sync-text { @apply min-w-0 truncate; }
+.atlas-queue-sync.atlas-of-tone--ok .atlas-queue-sync-text,
+.atlas-queue-sync.atlas-of-tone--warn .atlas-queue-sync-text { color: var(--tone); }
 .atlas-sync-source { @apply flex items-start gap-3 px-4 py-3 rounded-2xl bg-[var(--bg-recessed)]; box-shadow: var(--neu-inset-sm); }
 .atlas-sync-source > .atlas-of-dot { @apply mt-1.5; }
 .atlas-sync-source-text { @apply flex flex-col gap-1 min-w-0; }
