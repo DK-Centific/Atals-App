@@ -1,24 +1,70 @@
-import { useState } from 'react'
-import { TEAMS, TODAY, teamShort, toMinutes } from '../../data/schedule.js'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { Link } from 'react-router-dom'
+import { TODAY } from '../../data/schedule.js'
 import { addDays, longDayLabel, weekOf, weekRangeLabel } from '../../lib/dates.js'
-import { pressProps } from '../../motion/motion.js'
+import { checkDetails, checkTimes, conflictMessage, displayNames, findConflict } from '../../lib/bookings.js'
+import Collapse from '../../motion/Collapse.jsx'
+import useSlidingPill from '../../motion/useSlidingPill.js'
 import { useToast } from '../../motion/Toast.jsx'
 import { useSchedule } from '../../state/ScheduleContext.jsx'
-import { CheckIcon, ClockIcon, PlusIcon } from '../Icons.jsx'
+import { useQueue } from '../../state/ParticipantContext.jsx'
+import { formatMiles } from '../../lib/geo.js'
+import { bookingRouteMiles } from '../../lib/mileage.js'
+import { PlusIcon } from '../Icons.jsx'
+import { useModerators } from '../../state/ModeratorContext.jsx'
+import { useRole } from '../../state/RoleContext.jsx'
+import { ModeratorPicker, NotifyField, TextField, TimeField } from '../booking/Fields.jsx'
 
-const DEFAULTS = { date: TODAY, start: '17:00', end: '19:00', team: TEAMS[0].id }
+const DEFAULTS = {
+  date: TODAY, start: '17:00', end: '19:00', moderator: '',
+  name: '', location: '', email: '', phone: '', notes: '', participantId: '', requestId: '', notify: true,
+}
 
-// "New Booking" form: pick a day, a time range and a team, then book.
-export default function BookingPanel() {
-  const { addSession } = useSchedule()
+// "New Booking" form: pick a day, a time range, the participant and one moderator, then book.
+// On the Day view it is a panel. The map's booking sheet passes `participant`
+// (fixed, so the queue picker hides) and `onBooked`, and supplies its own header.
+export default function BookingPanel({ participant = null, onBooked = null }) {
+  const { sessions, addSession, removeSession, openBooking, setNote, triggerRef, draft } = useSchedule()
+  const queue = useQueue()
+  const openQueue = queue.filter((p) => p.status === 'open')
+  const panelRef = useRef(null)
   const toast = useToast()
   const [form, setForm] = useState(DEFAULTS)
+  const { name: moderatorName } = useModerators()
+  const { isAdmin } = useRole()
   const [slide, setSlide] = useState({ dir: null, key: 0 })
   const [shakeKey, setShakeKey] = useState(0)
   const [resetKey, setResetKey] = useState(0)
+  const [more, setMore] = useState(false)
   const set = (patch) => setForm((f) => ({ ...f, ...patch }))
 
   const week = weekOf(form.date)
+  // Who already has a booking in this slot, so the picker can say so.
+  const busy = useMemo(() => new Set(sessions
+    .filter((s) => findConflict([s], { ...form, moderator: s.moderator }))
+    .map((s) => s.moderator)), [sessions, form])
+  const { trackRef, pillProps } = useSlidingPill(`${slide.key}:${form.date}`)
+
+  // Fill name, address and contact from a OneForma participant.
+  const pickParticipant = (id) => {
+    const p = queue.find((q) => q.id === id)
+    if (!p) { set({ participantId: '', requestId: '' }); return }
+    set({ participantId: p.id, requestId: p.requestId, name: p.name, location: p.address.split(',')[0], email: p.email ?? '', phone: p.phone ?? '' })
+  }
+
+  // The map's sheet books one known person: fill the form from them once.
+  useEffect(() => {
+    if (participant) pickParticipant(participant.id)
+  }, [participant?.id]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // A participant handed over from elsewhere: fill the form and bring it into view.
+  useEffect(() => {
+    if (!draft || participant) return
+    pickParticipant(draft.participantId)
+    const el = panelRef.current
+    el?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+    requestAnimationFrame(() => el?.querySelector('.atlas-booking-pt-select')?.focus({ preventScroll: true }))
+  }, [draft]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const shiftWeek = (dir) => {
     set({ date: addDays(form.date, dir * 7) })
@@ -32,64 +78,81 @@ export default function BookingPanel() {
     if (weekChanged) setSlide((s) => ({ dir: DEFAULTS.date < form.date ? 'prev' : 'next', key: s.key + 1 }))
   }
 
+  const fail = (message) => {
+    setShakeKey((k) => k + 1)
+    toast(message, 'error')
+  }
+
   const book = () => {
-    if (toMinutes(form.end) <= toMinutes(form.start)) {
-      setShakeKey((k) => k + 1)
-      toast('End time must be after the start time.', 'error')
-      return
-    }
-    addSession({
+    const clash = form.moderator && findConflict(sessions, form)
+    const problem = checkTimes(form) ?? checkDetails(form) ?? (clash && conflictMessage(clash, moderatorName))
+    if (problem) return fail(problem)
+    const miles = bookingRouteMiles(queue.find((p) => p.id === form.participantId))
+    const created = addSession({
       date: form.date,
       start: form.start,
       end: form.end,
-      team: form.team,
+      moderator: form.moderator,
       status: 'booked',
-      name: 'New Session',
-      short: 'New Session',
-      summary: 'New Session',
-      location: 'Location to be confirmed',
+      ...displayNames(form.name),
+      location: form.location.trim() || 'Location to be confirmed',
+      email: form.email.trim(),
+      phone: form.phone.trim(),
+      notes: form.notes.trim(),
+      ...(form.participantId ? { participantId: form.participantId, requestId: form.requestId } : {}),
+      ...(miles ?? {}),
+    }, { notify: form.notify })
+    const summary = `${longDayLabel(form.date)} · ${form.start} – ${form.end} · ${moderatorName(form.moderator)}${form.notify ? ' · email queued' : ''}`
+    if (onBooked) {
+      onBooked(created, summary)
+      return
+    }
+    setForm((f) => ({ ...DEFAULTS, date: f.date }))
+    setMore(false)
+    triggerRef.current = document.activeElement
+    openBooking(created.id)
+    // The new booking's panel opens with an inline "Saved" note and Undo.
+    setNote({
+      id: created.id,
+      text: `Booked ${summary}`,
+      undo: () => removeSession(created.id),
+      closes: true,
     })
-    toast(`Booked ${longDayLabel(form.date)} · ${form.start} – ${form.end} · Team ${teamShort(form.team)}`)
   }
 
-  return (
-    <section className="atlas-booking atlas-raised">
-      <div className="atlas-booking-head">
-        <h2 className="atlas-booking-title">New Booking</h2>
-        <div
-          key={resetKey}
-          className={`atlas-booking-reset atlas-icon-btn atlas-raised-sm${resetKey ? ' atlas-spin-once' : ''}`}
-          title="Start a new booking"
-          {...pressProps(reset, 'Start a new booking')}
-        >
-          <PlusIcon />
-        </div>
-      </div>
-
+  const fields = (
+    <>
       <div className="atlas-booking-week">
         <div className="atlas-booking-week-head">
           <span className="atlas-booking-range">{weekRangeLabel(week)}</span>
           <div className="atlas-booking-week-nav">
-            <button className="atlas-booking-week-btn atlas-icon-btn atlas-raised-sm" aria-label="Previous week" onClick={() => shiftWeek(-1)}>&lt;</button>
-            <button className="atlas-booking-week-btn atlas-icon-btn atlas-raised-sm" aria-label="Next week" onClick={() => shiftWeek(1)}>&gt;</button>
+            <button type="button" className="atlas-booking-week-btn atlas-icon-btn atlas-raised-sm" aria-label="Previous week" onClick={() => shiftWeek(-1)}>&lt;</button>
+            <button type="button" className="atlas-booking-week-btn atlas-icon-btn atlas-raised-sm" aria-label="Next week" onClick={() => shiftWeek(1)}>&gt;</button>
           </div>
         </div>
         <div
           key={slide.key}
+          ref={trackRef}
+          role="group"
+          aria-label="Booking date"
           className={`atlas-date-strip atlas-no-scrollbar${slide.dir ? ` atlas-slide-${slide.dir}` : ''}`}
         >
+          <div {...pillProps} className={`${pillProps.className} atlas-date-pill`} />
           {week.map((d) => {
             const active = d.date === form.date
             return (
-              <div
+              <button
                 key={d.date}
+                type="button"
                 className={`atlas-date-chip${active ? ' is-active' : ''}`}
+                data-pill-active={active}
                 aria-pressed={active}
-                {...pressProps(() => set({ date: d.date }), longDayLabel(d.date))}
+                aria-label={longDayLabel(d.date)}
+                onClick={() => set({ date: d.date })}
               >
                 <span className="atlas-date-chip-dow">{d.dow}</span>
                 <span className="atlas-date-chip-day">{d.day}</span>
-              </div>
+              </button>
             )
           })}
         </div>
@@ -100,45 +163,88 @@ export default function BookingPanel() {
         <TimeField label="END TIME" value={form.end} onChange={(v) => set({ end: v })} />
       </div>
 
-      <div className="atlas-booking-teams">
-        <div className="atlas-booking-teams-head">
-          <label className="atlas-eyebrow">ASSIGN A TEAM</label>
-          <span className="atlas-team-create atlas-link">CREATE NEW</span>
-        </div>
-        <div className="atlas-team-list">
-          {TEAMS.map((t) => {
-            const active = t.id === form.team
-            return (
-              <div
-                key={t.id}
-                className={`atlas-team-option${active ? ' is-active' : ''}`}
-                aria-pressed={active}
-                {...pressProps(() => set({ team: t.id }), t.name)}
-              >
-                <div className="atlas-team-badge">{t.code}</div>
-                <span className="atlas-team-name">{t.name}</span>
-                <div className="atlas-team-check"><CheckIcon /></div>
-              </div>
-            )
-          })}
-        </div>
+      <div className="atlas-booking-participant">
+        {!participant && (
+          <label className="atlas-field">
+            <span className="atlas-eyebrow">FROM ONEFORMA QUEUE</span>
+            <select
+              className="atlas-input atlas-booking-pt-select"
+              value={form.participantId}
+              onChange={(e) => pickParticipant(e.target.value)}
+            >
+              <option value="">Pick an endorsed participant ({openQueue.length} open)</option>
+              {form.participantId && !openQueue.some((p) => p.id === form.participantId) && (
+                <option value={form.participantId}>{form.name}</option>
+              )}
+              {openQueue.map((p) => (
+                <option key={p.id} value={p.id}>{p.name} · {formatMiles(p.distMi)} · {p.id}</option>
+              ))}
+            </select>
+          </label>
+        )}
+        <TextField label="PARTICIPANT" value={form.name} placeholder="Full name" onChange={(v) => set({ name: v, participantId: '', requestId: '' })} />
+        <TextField label="LOCATION" value={form.location} placeholder="Address or meeting link" onChange={(v) => set({ location: v })} />
+        <button
+          type="button"
+          className="atlas-booking-more atlas-link"
+          aria-expanded={more}
+          aria-controls="atlas-booking-extra"
+          onClick={() => setMore((m) => !m)}
+        >
+          {more ? '− HIDE CONTACT & NOTES' : '+ CONTACT & NOTES'}
+        </button>
+        <Collapse open={more} id="atlas-booking-extra">
+          <div className="atlas-booking-extra">
+            <TextField label="EMAIL" type="email" value={form.email} placeholder="name@example.com" onChange={(v) => set({ email: v })} />
+            <TextField label="PHONE" type="tel" value={form.phone} placeholder="Optional" onChange={(v) => set({ phone: v })} />
+            <TextField label="NOTES" multiline value={form.notes} placeholder="Access, parking, anything the moderator should know" onChange={(v) => set({ notes: v })} />
+          </div>
+        </Collapse>
       </div>
 
-      <div className="atlas-booking-footer">
-        <button className="atlas-btn-primary" onClick={book}>Book Session</button>
+      <div className="atlas-booking-moderators">
+        <div className="atlas-booking-moderators-head">
+          <span className="atlas-eyebrow">ASSIGN A MODERATOR</span>
+          {isAdmin && <Link to="/admin/users" className="atlas-moderator-create atlas-link">MANAGE</Link>}
+        </div>
+        <ModeratorPicker value={form.moderator} busy={busy} onChange={(moderator) => set({ moderator })} />
       </div>
-    </section>
+    </>
   )
-}
-
-function TimeField({ label, value, onChange }) {
-  return (
-    <div className="atlas-time-field">
-      <label className="atlas-eyebrow">{label}</label>
-      <div className="atlas-time-input-wrap">
-        <input type="time" value={value} onChange={(e) => onChange(e.target.value)} className="atlas-input" />
-        <ClockIcon />
-      </div>
+  const footer = (
+    <div className="atlas-booking-footer">
+      <NotifyField checked={form.notify} onChange={(notify) => set({ notify })} email={form.email} />
+      <button type="button" className="atlas-btn-primary" onClick={book}>Book Session</button>
     </div>
+  )
+
+  if (participant) {
+    return (
+      <div ref={panelRef} className="atlas-booking atlas-booking--sheet">
+        <div className="atlas-sheet-body">{fields}</div>
+        <div className="atlas-sheet-foot">{footer}</div>
+      </div>
+    )
+  }
+
+  return (
+    <section ref={panelRef} className="atlas-booking atlas-raised">
+      <div className="atlas-booking-head">
+        <h2 className="atlas-booking-title">New Booking</h2>
+        <button
+          key={resetKey}
+          type="button"
+          className={`atlas-booking-reset atlas-icon-btn atlas-raised-sm${resetKey ? ' atlas-spin-once' : ''}`}
+          title="Start a new booking"
+          aria-label="Start a new booking"
+          onClick={reset}
+        >
+          <PlusIcon />
+        </button>
+      </div>
+
+      {fields}
+      {footer}
+    </section>
   )
 }

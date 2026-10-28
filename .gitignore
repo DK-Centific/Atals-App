@@ -1,2 +1,10 @@
 node_modules
 dist
+osrm/data/
+.env.local
+.env.*.local
+
+# Local-only seed data (moderator names, emails, test password)
+src/data/*.local.js
+# Test sign-in accounts for UAT checks (never commit)
+test-accounts.local

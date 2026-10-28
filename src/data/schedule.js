@@ -1,3 +1,5 @@
+import { seedModerator } from './moderators.js'
+
 // Seed data for the prototype. Everything here mirrors the Day, Week and Month
 // designs: one booked week (Oct 21 - Oct 27, 2024) with Thursday Oct 24 as "today".
 
@@ -8,39 +10,80 @@ export const STATUS = {
   cancelled: { label: 'Cancelled', dayLabel: 'CANCELLED', weekLabel: 'CANCEL' },
 }
 
-export const TEAMS = [
-  { id: 'alpha', code: 'T1', name: 'Team 1 (Alpha)', short: 'Alpha' },
-  { id: 'beta', code: 'T2', name: 'Team 2 (Beta)', short: 'Beta' },
-  { id: 'gamma', code: 'T3', name: 'Team 3 (Gamma)', short: 'Gamma' },
-]
-
-export const teamShort = (id) => TEAMS.find((t) => t.id === id)?.short ?? id
 
 export const TODAY = '2024-10-24'
 
 
+// moderator: the assigned moderator's email (one moderator per session).
 // name: full name (Day view), short: Week view abbreviation, summary: Month summary bar.
+// Every booking points at its OneForma participant: participantId is the OneForma
+// userId and requestId the recruitment request (see src/data/oneFormaFeedSample.ts).
 export const SESSIONS = [
   {
-    id: 's1', date: '2024-10-24', start: '09:00', end: '10:30', status: 'completed', team: 'alpha',
-    name: 'Sarah Jenkins', short: 'S. Jenkins', summary: 'Sarah Jenkins', location: 'Remote Link',
+    id: 's6', date: '2024-10-24', start: '08:00', end: '08:45', status: 'completed', moderator: seedModerator(0),
+    name: 'Priya Nair', short: 'P. Nair', summary: 'Priya Nair', location: '1488 151st Ave NE',
+    participantId: '1836058700010265', requestId: '712000010265',
   },
   {
-    id: 's2', date: '2024-10-24', start: '11:00', end: '12:00', status: 'cancelled', team: 'beta',
-    name: 'Robert Chen', short: 'R. Chen', summary: 'Robert Chen', location: '451 Appian Way',
+    id: 's1', date: '2024-10-24', start: '09:00', end: '10:30', status: 'completed', moderator: seedModerator(1),
+    name: 'Sarah Jenkins', short: 'S. Jenkins', summary: 'Sarah Jenkins', location: '3024 145th Ave NE',
+    participantId: '1836058700010230', requestId: '712000010230',
   },
   {
-    id: 's3', date: '2024-10-24', start: '14:30', end: '16:00', status: 'insession', team: 'alpha',
-    name: 'Evelyn Vance', short: 'E. Vance', summary: 'Evelyn Vance', location: '742 Evergreen Terr.',
-    protocol: 'Assessment', eta: '14:25', timezone: 'GMT',
+    id: 's2', date: '2024-10-24', start: '11:00', end: '12:00', status: 'cancelled', moderator: seedModerator(2),
+    name: 'Robert Chen', short: 'R. Chen', summary: 'Robert Chen', location: '3412 161st Ave NE',
+    participantId: '1836058700010237', requestId: '712000010237',
   },
   {
-    id: 's4', date: '2024-10-24', start: '16:30', end: '17:45', status: 'booked', team: 'beta',
-    name: 'Marcus Thorne', short: 'M. Thorne', summary: 'Marcus Thorne', location: '1200 Pacific Coast Hwy',
+    id: 's7', date: '2024-10-24', start: '12:15', end: '13:30', status: 'completed', moderator: seedModerator(3),
+    name: 'Omar Haddad', short: 'O. Haddad', summary: 'Omar Haddad', location: '17440 NE 42nd St',
+    participantId: '1836058700010272', requestId: '712000010272',
   },
   {
-    id: 's5', date: '2024-10-24', start: '19:00', end: '20:30', status: 'booked', team: 'gamma',
-    name: 'Dr. Alana Rivera', short: 'A. Rivera', summary: 'Dr. Rivera', location: '88 Constellation Blvd',
+    id: 's3', date: '2024-10-24', start: '14:30', end: '16:00', status: 'insession', moderator: seedModerator(4),
+    name: 'Evelyn Vance', short: 'E. Vance', summary: 'Evelyn Vance', location: '13802 NE 34th St',
+    participantId: '1836058700010244', requestId: '712000010244',
+    protocol: 'Assessment', eta: '14:25', timezone: 'PT',
+  },
+  {
+    id: 's4', date: '2024-10-24', start: '16:30', end: '17:45', status: 'booked', moderator: seedModerator(5),
+    name: 'Marcus Thorne', short: 'M. Thorne', summary: 'Marcus Thorne', location: '3915 139th Ave NE',
+    participantId: '1836058700010251', requestId: '712000010251',
+  },
+  {
+    id: 's8', date: '2024-10-24', start: '17:00', end: '18:00', status: 'booked', moderator: seedModerator(6),
+    name: 'Ethan Brooks', short: 'E. Brooks', summary: 'Ethan Brooks', location: '3374 143rd Ave NE',
+    participantId: '1836058700010370', requestId: '712000010370',
+  },
+  {
+    id: 's5', date: '2024-10-24', start: '19:00', end: '20:30', status: 'booked', moderator: seedModerator(7),
+    name: 'Dr. Alana Rivera', short: 'A. Rivera', summary: 'Dr. Rivera', location: '16257 NE 35th St',
+    participantId: '1836058700010258', requestId: '712000010258',
+  },
+  {
+    id: 's9', date: '2024-10-25', start: '10:00', end: '11:30', status: 'booked', moderator: seedModerator(8),
+    name: 'Lena Fischer', short: 'L. Fischer', summary: 'Lena Fischer', location: '1605 125th Ave NE',
+    participantId: '1836058700010279', requestId: '712000010279',
+  },
+  {
+    id: 's10', date: '2024-10-25', start: '14:00', end: '15:00', status: 'booked', moderator: seedModerator(9),
+    name: 'June Park', short: 'J. Park', summary: 'June Park', location: '1463 114th Ave NE',
+    participantId: '1836058700010293', requestId: '712000010293',
+  },
+  {
+    id: 's11', date: '2024-10-22', start: '13:00', end: '14:00', status: 'completed', moderator: seedModerator(10),
+    name: 'Grace Okafor', short: 'G. Okafor', summary: 'Grace Okafor', location: '15319 NE 1st St',
+    participantId: '1836058700010307', requestId: '712000010307',
+  },
+  {
+    id: 's12', date: '2024-10-23', start: '10:00', end: '11:00', status: 'completed', moderator: seedModerator(11),
+    name: 'Sofia Rossi', short: 'S. Rossi', summary: 'Sofia Rossi', location: '3937 136th Ave NE',
+    participantId: '1836058700010377', requestId: '712000010377',
+  },
+  {
+    id: 's13', date: '2024-10-26', start: '09:30', end: '11:00', status: 'booked', moderator: seedModerator(12),
+    name: 'Kwame Mensah', short: 'K. Mensah', summary: 'Kwame Mensah', location: '17509 NE 26th St',
+    participantId: '1836058700010384', requestId: '712000010384',
   },
 ]
 

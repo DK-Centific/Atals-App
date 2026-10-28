@@ -1,0 +1,12 @@
+# Self-hosted OSRM for Atlas road routes (driving profile, Washington State).
+# Prepare the map data once with ./prepare.sh, then: docker compose up -d
+# The app reads it from VITE_ROUTING_URL (e.g. http://localhost:5000).
+services:
+  osrm:
+    image: ghcr.io/project-osrm/osrm-backend:v5.27.1
+    command: osrm-routed --algorithm mld /data/washington-latest.osrm --max-table-size 1000
+    volumes:
+      - ./data:/data
+    ports:
+      - "5000:5000"
+    restart: unless-stopped

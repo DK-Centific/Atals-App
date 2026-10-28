@@ -1,6 +1,8 @@
-import { STATUS, teamShort } from '../../data/schedule.js'
+import { STATUS } from '../../data/schedule.js'
+import { useModerators } from '../../state/ModeratorContext.jsx'
 import { PinIcon } from '../Icons.jsx'
 import { StatusDot } from '../StatusLegend.jsx'
+import { useBookingTriggers } from '../../state/ScheduleContext.jsx'
 
 // Status styling lives in index.css under .atlas-session-card--{status}.
 const CARD_CLASS = {
@@ -11,10 +13,12 @@ const CARD_CLASS = {
 }
 
 export default function SessionCard({ session, style }) {
+  const { name: moderatorName, fullName } = useModerators()
   const live = session.status === 'insession'
+  const triggers = useBookingTriggers()
 
   return (
-    <article className={`${CARD_CLASS[session.status]} atlas-rise`} style={style}>
+    <article className={`${CARD_CLASS[session.status]} atlas-row-in`} style={style} {...triggers(session)} aria-label={`${session.name}, ${session.start} to ${session.end}`}>
       {live && <div className="atlas-session-glow" />}
 
       <div className="atlas-session-time">
@@ -25,7 +29,7 @@ export default function SessionCard({ session, style }) {
       <div className="atlas-session-info">
         <div className="atlas-session-status">
           <StatusDot status={session.status} pulse={live} />
-          <span className="atlas-eyebrow atlas-session-status-label">{STATUS[session.status].dayLabel}</span>
+          <span key={session.status} className="atlas-eyebrow atlas-session-status-label atlas-status-line">{STATUS[session.status].dayLabel}</span>
         </div>
         <h3 className="atlas-session-client">{session.name}</h3>
         <div className="atlas-session-meta">
@@ -35,9 +39,9 @@ export default function SessionCard({ session, style }) {
         </div>
       </div>
 
-      <div className="atlas-session-team">
-        <div className="atlas-eyebrow atlas-session-team-label">TEAM</div>
-        <div className="atlas-session-team-badge">{teamShort(session.team)}</div>
+      <div className="atlas-session-moderator">
+        <div className="atlas-eyebrow atlas-session-moderator-label">MODERATOR</div>
+        <div className="atlas-session-moderator-badge" title={`Moderator: ${fullName(session.moderator)}`}>{moderatorName(session.moderator)}</div>
       </div>
     </article>
   )

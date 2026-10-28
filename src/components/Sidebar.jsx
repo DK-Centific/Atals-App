@@ -1,48 +1,32 @@
-import { useState } from 'react'
-import { pressProps } from '../motion/motion.js'
+import { useLocation } from 'react-router-dom'
 import {
-  CalendarIcon, CalendarSquareIcon, DashboardIcon, LogoIcon, ParticipantsIcon,
-  SettingsIcon, TeamsIcon, TeamsSimpleIcon,
+  CalendarIcon, CalendarSquareIcon, DashboardIcon, LogoIcon, ParticipantsIcon, TeamsIcon,
 } from './Icons.jsx'
+import AccountMenu from './AccountMenu.jsx'
+import SyncRailButton from './sync/SyncRailButton.jsx'
+import useViewNavigate from '../motion/useViewNavigate.js'
+import { useRole } from '../state/RoleContext.jsx'
 
-// The Day and Week designs share one rail; the Month design has its own
-// ordering and an avatar at the bottom. `variant` picks between them.
-const RAILS = {
-  default: {
-    nav: [
-      { id: 'dashboard', title: 'Dashboard', Icon: DashboardIcon },
-      { id: 'schedule', title: 'Schedule', Icon: CalendarIcon },
-      { id: 'teams', title: 'Teams', Icon: TeamsIcon },
-      { id: 'participants', title: 'Participants', Icon: ParticipantsIcon },
-    ],
-    footer: [{ id: 'settings', title: 'Settings', Icon: SettingsIcon }],
-  },
-  month: {
-    nav: [
-      { id: 'schedule', title: 'Schedule', Icon: CalendarSquareIcon },
-      { id: 'dashboard', title: 'Dashboard', Icon: DashboardIcon },
-      { id: 'teams', title: 'Teams', Icon: TeamsSimpleIcon },
-      { id: 'settings', title: 'Settings', Icon: SettingsIcon },
-    ],
-    footer: [],
-  },
+// The Admin app's rail. Every item is a place in the app; what shows depends on
+// the role (Scheduler: Schedule only; Admin: Schedule, Checklist, Users, Tracker).
+// The Month design orders the same items differently (`variant`).
+const ITEMS = {
+  schedule: { title: 'Schedule', path: '/day', match: ['/day', '/week', '/month'], roles: ['admin', 'scheduler'] },
+  checklist: { title: 'Checklist', path: '/checklist', match: ['/checklist'], roles: ['admin'], Icon: TeamsIcon },
+  users: { title: 'Users', path: '/admin/users', match: ['/admin/users'], roles: ['admin'], Icon: ParticipantsIcon },
+  tracker: { title: 'Production tracker', path: '/admin/tracker', match: ['/admin/tracker'], roles: ['admin'], Icon: DashboardIcon },
+}
+
+const ORDER = {
+  default: ['schedule', 'checklist', 'users', 'tracker'],
+  month: ['schedule', 'tracker', 'checklist', 'users'],
 }
 
 export default function Sidebar({ variant = 'default' }) {
-  const rail = RAILS[variant]
-  const [active, setActive] = useState(rail.nav[0].id)
-
-  const renderItem = ({ id, title, Icon }) => (
-    <div
-      key={id}
-      className={`atlas-rail-item${active === id ? ' is-active' : ''}`}
-      title={title}
-      aria-pressed={active === id}
-      {...pressProps(() => setActive(id), title)}
-    >
-      <Icon />
-    </div>
-  )
+  const { pathname } = useLocation()
+  const goTo = useViewNavigate()
+  const { role } = useRole()
+  const items = ORDER[variant].map((id) => ({ id, ...ITEMS[id] })).filter((i) => i.roles.includes(role))
 
   return (
     <aside className="atlas-sidebar atlas-raised">
@@ -52,17 +36,31 @@ export default function Sidebar({ variant = 'default' }) {
         </div>
       </div>
 
-      <nav className="atlas-sidebar-nav">
-        {rail.nav.map(renderItem)}
+      <nav className="atlas-sidebar-nav" aria-label="Atlas">
+        {items.map(({ id, title, path, match, Icon }) => {
+          const active = match.some((m) => pathname === m || pathname.startsWith(`${m}/`))
+          const RailIcon = Icon ?? (variant === 'month' ? CalendarSquareIcon : CalendarIcon)
+          return (
+            <button
+              key={id}
+              type="button"
+              className={`atlas-rail-item${active ? ' is-active' : ''}${path ? '' : ' is-soon'}`}
+              title={title}
+              aria-label={title}
+              aria-current={active ? 'page' : undefined}
+              disabled={!path}
+              onClick={() => { if (path && !active) goTo(path) }}
+            >
+              <RailIcon />
+            </button>
+          )
+        })}
       </nav>
 
-      {variant === 'month' ? (
-        <div className="atlas-sidebar-avatar atlas-well-sm" />
-      ) : (
-        <div className="atlas-sidebar-footer">
-          {rail.footer.map(renderItem)}
-        </div>
-      )}
+      <div className="atlas-sidebar-footer">
+        <SyncRailButton />
+        <AccountMenu />
+      </div>
     </aside>
   )
 }

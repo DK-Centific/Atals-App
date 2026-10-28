@@ -1,25 +1,312 @@
-import { createContext, useCallback, useContext, useMemo, useState } from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { SESSIONS, toMinutes } from '../data/schedule.js'
+import { seedModerator } from '../data/moderators.js'
+import { fromBookingRow } from '../lib/oneforma/actions.ts'
+import { READ_URL } from '../lib/oneforma/config.ts'
+import { QA_STAGE_LABEL } from '../lib/oneforma/events.ts'
+import { fetchRead } from '../lib/oneforma/readFlow.ts'
+import { nowIso } from '../lib/oneforma/time.ts'
+import { useToast } from '../motion/Toast.jsx'
+import { useAuth } from './AuthContext.tsx'
+import { useSync } from './SyncContext.tsx'
 
-// In-memory schedule shared by every view. Bookings last until the page reloads.
+// Schedule shared by every view. With the read flow set, bookings load from
+// SharePoint (Atlas_Bookings) and every change goes back through the Atlas action
+// flow (SyncContext), which also emails people and tells OneForma. This browser's
+// copy shows at once and is replaced when SharePoint answers.
 const ScheduleContext = createContext(null)
 
-let nextId = 1
+// v4: one moderator per session (moderator: email) instead of a team.
+// v3 copies are carried over; older ones are ignored.
+const STORAGE_KEY = 'atlas_schedule_v4'
+const V3_KEY = 'atlas_schedule_v3'
+const TEAM_TO_SEED = { alpha: 0, beta: 1, gamma: 2 }
+
+const QA_RESULT_LABEL = { passed: 'Passed', failed: 'Failed', pending: 'Started', not_required: 'Not required' }
+
+// A v3 booking keeps its sample moderator if it is a sample session, else its
+// old team maps onto one of the seed moderators.
+function fromTeam({ team, ...s }) {
+  const sample = SESSIONS.find((x) => x.id === s.id)
+  return { ...s, moderator: sample?.moderator ?? seedModerator(TEAM_TO_SEED[team] ?? 0) }
+}
+
+function loadSessions() {
+  try {
+    const saved = JSON.parse(window.localStorage.getItem(STORAGE_KEY))
+    if (saved?.version === 4 && Array.isArray(saved.sessions)) return saved.sessions
+    const old = JSON.parse(window.localStorage.getItem(V3_KEY))
+    if (old?.version === 3 && Array.isArray(old.sessions)) return old.sessions.map(fromTeam)
+  } catch {
+    // Unreadable or blocked storage: start from the seed data.
+  }
+  return SESSIONS
+}
+
+// Returns false when this browser refuses to store (private mode, full storage).
+function saveSessions(sessions) {
+  try {
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify({ version: 4, sessions }))
+    return true
+  } catch {
+    return false
+  }
+}
+
+/** Refresh from SharePoint when the tab comes back, at most this often. */
+const REFRESH_MS = 30000
+
+// Checklist steps (moderator) and the action each one saves.
+const CHECK_STEP = {
+  arrived: { action: 'checklist.arrived', text: 'Arrived at location' },
+  contacted: { action: 'checklist.contacted', text: 'Called participant' },
+  confirmed: { action: 'checklist.confirmed', text: 'Confirmed' },
+}
+
+const newId = () => `b-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`
+const stamp = (type, text) => ({ at: new Date().toISOString(), type, text })
 
 export function ScheduleProvider({ children }) {
-  const [sessions, setSessions] = useState(SESSIONS)
+  const [sessions, setSessions] = useState(loadSessions)
+  // Which booking the details panel shows: { id, mode } or { date } for a day's list.
+  const [panel, setPanel] = useState(null)
+  // Right-click menu on a booking: { id, x, y }.
+  const [menu, setMenu] = useState(null)
+  // Inline "Saved" note in the details panel: { id, text, undo }.
+  const [note, setNote] = useState(null)
+  // A participant handed to the New Booking form from elsewhere (the map): { participantId, key }.
+  const [draft, setDraftState] = useState(null)
+  // The card that opened the panel or menu, so focus can go back to it.
+  const triggerRef = useRef(null)
+  const toast = useToast()
+  const { record, withdraw, unsavedRows } = useSync()
+  const { user } = useAuth()
+  const warned = useRef(false)
 
-  const addSession = useCallback((session) => {
-    const created = { id: `new-${nextId++}`, ...session }
-    setSessions((prev) => [...prev, created])
-    return created
+  useEffect(() => {
+    if (saveSessions(sessions) || warned.current) return
+    // Say so once instead of failing silently; the app keeps working in memory.
+    warned.current = true
+    toast('Changes can’t be saved in this browser. They last until you close this tab.', 'error')
+  }, [sessions, toast])
+
+  // The latest sessions, so an action can report the booking exactly as it ends up.
+  const current = useRef(sessions)
+  current.current = sessions
+
+  // Apply a change to one booking, record it in its history, and return the result.
+  const apply = useCallback((id, change, entry) => {
+    const before = current.current.find((s) => s.id === id)
+    if (!before) return null
+    const next = { ...before, ...change, history: [...(before.history ?? []), entry] }
+    current.current = current.current.map((s) => (s.id === id ? next : s))
+    setSessions(current.current)
+    return next
   }, [])
 
-  const value = useMemo(() => ({ sessions, addSession }), [sessions, addSession])
+  // Load from SharePoint, keeping changes made here that it hasn't saved yet.
+  const lastLoad = useRef(0)
+  const loadRemote = useCallback(async () => {
+    if (!READ_URL) return
+    lastLoad.current = Date.now()
+    try {
+      const body = await fetchRead()
+      const byId = new Map()
+      for (const row of [...(body.bookings ?? []), ...unsavedRows()]) {
+        const s = fromBookingRow(row)
+        if (s) byId.set(s.id, s)
+      }
+      current.current = [...byId.values()]
+      setSessions(current.current)
+    } catch {
+      toast('Couldn’t load bookings from SharePoint. Showing the copy saved in this browser.', 'error')
+    }
+  }, [toast, unsavedRows])
+
+  useEffect(() => {
+    void loadRemote()
+    const onShow = () => {
+      if (document.visibilityState === 'visible' && Date.now() - lastLoad.current > REFRESH_MS) void loadRemote()
+    }
+    document.addEventListener('visibilitychange', onShow)
+    return () => document.removeEventListener('visibilitychange', onShow)
+  }, [loadRemote])
+
+  const addSession = useCallback((session, { notify = false } = {}) => {
+    const created = { id: newId(), ...session, history: [stamp('created', 'Booked')] }
+    current.current = [...current.current, created]
+    setSessions(current.current)
+    record('booking.created', created, { event: 'booking.created', notify })
+    return created
+  }, [record])
+
+  // Every edit is saved. Moderator and location are also part of what OneForma holds.
+  const updateSession = useCallback((id, change) => {
+    const before = current.current.find((s) => s.id === id)
+    const next = apply(id, change, stamp('edited', 'Details edited'))
+    if (!before || !next) return
+    const moved = [before.moderator !== next.moderator && 'moderator', (before.location ?? '') !== (next.location ?? '') && 'location'].filter(Boolean)
+    if (moved.length && next.status === 'booked') {
+      record('booking.updated', next, { event: 'booking.rescheduled', input: { reason: `Updated ${moved.join(' and ')}` }, label: 'Details edited' })
+    } else {
+      record('booking.updated', next)
+    }
+  }, [apply, record])
+
+  // Admin correction of a booking's round-trip miles (billing); saved like any edit.
+  const setRouteMiles = useCallback((id, miles) => {
+    const next = apply(id, { routeMiles: miles, routeMilesSource: 'admin' }, stamp('edited', `Miles set to ${miles} by admin`))
+    if (next) record('booking.updated', next)
+  }, [apply, record])
+
+  const rescheduleSession = useCallback((id, slot, reason, { notify = false } = {}) => {
+    const before = current.current.find((s) => s.id === id)
+    if (!before) return
+    const from = { date: before.date, start: before.start, end: before.end }
+    const next = apply(id, { ...slot, rescheduledFrom: from }, { ...stamp('rescheduled', 'Rescheduled'), from, to: slot, reason })
+    record('booking.rescheduled', next, { event: 'booking.rescheduled', input: { reason }, notify })
+  }, [apply, record])
+
+  // Before it starts this cancels the booking; once in session it cancels the session.
+  const cancelSession = useCallback((id, reason, { notify = false } = {}) => {
+    const wasLive = current.current.find((s) => s.id === id)?.status === 'insession'
+    const next = apply(id, { status: 'cancelled', cancelReason: reason, cancelledAt: new Date().toISOString() },
+      { ...stamp('cancelled', wasLive ? 'Session cancelled' : 'Cancelled'), reason })
+    const type = wasLive ? 'session.cancelled' : 'booking.cancelled'
+    record(type, next, { event: type, input: { reason }, notify })
+  }, [apply, record])
+
+  const startSession = useCallback((id) => {
+    const at = nowIso()
+    const next = apply(id, { status: 'insession', actualStart: at }, stamp('started', 'Session started'))
+    record('session.started', next, { event: 'session.started', input: { occurredAt: at } })
+  }, [apply, record])
+
+  const completeSession = useCallback((id) => {
+    const at = nowIso()
+    const before = current.current.find((s) => s.id === id)
+    const next = apply(id, { status: 'completed', actualEnd: at, actualStart: before?.actualStart ?? at },
+      stamp('completed', 'Marked completed'))
+    record('session.completed', next, { event: 'session.completed', input: { occurredAt: at } })
+  }, [apply, record])
+
+  // Saved in SharePoint; OneForma's callback API has no interruption event yet.
+  const interruptSession = useCallback((id, reason) => {
+    const next = apply(id, {}, { ...stamp('interrupted', 'Session interrupted'), reason })
+    if (next) record('session.interrupted', next)
+  }, [apply, record])
+
+  // Checklist (moderator): each step stamps the time and who did it. The flow
+  // records the signed-in person as "by" on its side, whatever the app sends.
+  const checkStep = useCallback((id, step) => {
+    const { action, text } = CHECK_STEP[step]
+    const at = nowIso()
+    const by = user?.email ?? ''
+    const next = apply(id, { [`${step}At`]: at, [`${step}By`]: by }, stamp(action, text))
+    if (next) record(action, next)
+    return next
+  }, [apply, record, user?.email])
+
+  // A recording lives in the client's app; Atlas reports a reference to it, never the file.
+  // Each new recording of the same session is the next media version and needs its own QA.
+  const logRecording = useCallback((id, { mediaRef, durationSeconds, failed, reason }) => {
+    const before = current.current.find((s) => s.id === id)
+    if (!before) return
+    const version = (before.recordings?.length ?? 0) + 1
+    const recording = {
+      version, status: failed ? 'failed' : 'completed', mediaRef, durationSeconds, at: nowIso(),
+      ...(reason ? { reason } : {}),
+    }
+    const next = apply(id, { recordings: [...(before.recordings ?? []), recording], qa: version > 1 ? {} : before.qa },
+      { ...stamp(failed ? 'recording-failed' : 'recording', failed ? `Recording v${version} failed` : `Recording v${version} logged`), ...(reason ? { reason } : {}) })
+    const type = failed ? 'recording.failed' : 'recording.completed'
+    record(type, next, { event: type, input: reason ? { reason } : {} })
+  }, [apply, record])
+
+  const setQa = useCallback((id, stage, result, reason) => {
+    const before = current.current.find((s) => s.id === id)
+    const recording = before?.recordings?.[before.recordings.length - 1]
+    if (!before || !recording) return
+    const qa = { ...(before.qa ?? {}), [stage]: { result, mediaVersion: recording.version, at: nowIso(), ...(reason ? { reason } : {}) } }
+    const next = apply(id, { qa }, { ...stamp('qa', `${QA_STAGE_LABEL[stage]}: ${QA_RESULT_LABEL[result]}`), ...(reason ? { reason } : {}) })
+    record('qa.updated', next, { event: 'qa.result.updated', input: { stage, ...(reason ? { reason } : {}) } })
+  }, [apply, record])
+
+  // Undo: put back the booking exactly as it was before the change and pull back
+  // what that change queued. If it was already saved, save the restored booking.
+  const restoreSession = useCallback((snapshot) => {
+    const now = current.current.find((s) => s.id === snapshot.id)
+    const since = now?.history?.[snapshot.history?.length ?? 0]?.at
+    current.current = current.current.map((s) => (s.id === snapshot.id ? snapshot : s))
+    setSessions(current.current)
+    if (since && withdraw(snapshot.id, since)) record('booking.updated', snapshot, { label: 'Change undone' })
+  }, [withdraw, record])
+
+  // Undo of a new booking. One already saved can't be deleted from here, so it is cancelled instead.
+  const removeSession = useCallback((id) => {
+    if (!withdraw(id, '')) {
+      current.current = current.current.filter((s) => s.id !== id)
+      setSessions(current.current)
+      return
+    }
+    const next = apply(id, { status: 'cancelled', cancelReason: 'Undone right after booking' },
+      { ...stamp('cancelled', 'Cancelled'), reason: 'Undone right after booking' })
+    if (next) record('booking.cancelled', next, { event: 'booking.cancelled', input: { reason: 'Undone right after booking' } })
+  }, [withdraw, apply, record])
+
+  const openBooking = useCallback((id, mode = 'view') => { setMenu(null); setPanel({ id, mode }) }, [])
+  const openDay = useCallback((date) => { setMenu(null); setPanel({ date }) }, [])
+  const closePanel = useCallback(() => { setPanel(null); setNote(null) }, [])
+  const openMenu = useCallback((id, x, y) => setMenu({ id, x, y }), [])
+  const closeMenu = useCallback(() => setMenu(null), [])
+
+  const clearNote = useCallback(() => setNote(null), [])
+  const startDraft = useCallback((participantId) => setDraftState({ participantId, key: Date.now() }), [])
+
+  const value = useMemo(() => ({
+    sessions, addSession, updateSession, setRouteMiles, rescheduleSession, cancelSession, startSession, completeSession,
+    interruptSession, logRecording, setQa, restoreSession, removeSession, checkStep,
+    panel, openBooking, openDay, closePanel, menu, openMenu, closeMenu,
+    note, setNote, clearNote, triggerRef, draft, startDraft,
+  }), [draft, startDraft, sessions, addSession, updateSession, setRouteMiles, rescheduleSession, cancelSession, startSession, completeSession,
+    interruptSession, logRecording, setQa, restoreSession, removeSession, checkStep,
+    panel, openBooking, openDay, closePanel, menu, openMenu, closeMenu, note, clearNote])
   return <ScheduleContext.Provider value={value}>{children}</ScheduleContext.Provider>
 }
 
 export const useSchedule = () => useContext(ScheduleContext)
+
+// Click opens the booking's details; right-click (or Shift+F10) opens the action menu.
+export function useBookingTriggers() {
+  const { openBooking, openMenu, triggerRef } = useSchedule()
+  return (session) => ({
+    role: 'button',
+    tabIndex: 0,
+    'aria-haspopup': 'dialog',
+    'data-booking-id': session.id,
+    onClick: (e) => {
+      triggerRef.current = e.currentTarget
+      openBooking(session.id)
+    },
+    onKeyDown: (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault()
+        triggerRef.current = e.currentTarget
+        openBooking(session.id)
+      } else if ((e.shiftKey && e.key === 'F10') || e.key === 'ContextMenu') {
+        e.preventDefault()
+        triggerRef.current = e.currentTarget
+        const r = e.currentTarget.getBoundingClientRect()
+        openMenu(session.id, r.left + 16, r.top + 16)
+      }
+    },
+    onContextMenu: (e) => {
+      e.preventDefault()
+      triggerRef.current = e.currentTarget
+      openMenu(session.id, e.clientX, e.clientY)
+    },
+  })
+}
 
 export const sessionsOn = (sessions, date) =>
   sessions

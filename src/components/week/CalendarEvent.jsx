@@ -1,8 +1,9 @@
-import { STATUS, teamShort, toMinutes } from '../../data/schedule.js'
+import { STATUS, toMinutes } from '../../data/schedule.js'
+import { useModerators } from '../../state/ModeratorContext.jsx'
 import { StatusDot } from '../StatusLegend.jsx'
-import { pressProps } from '../../motion/motion.js'
+import { useBookingTriggers } from '../../state/ScheduleContext.jsx'
 
-export const HOUR_HEIGHT = 80 // px per hour row, matches .atlas-week-slot
+export const HOUR_HEIGHT = 5 // rem per hour row, matches .atlas-week-slot
 
 // Status styling lives in index.css under .atlas-week-event--{status}.
 const EVENT_CLASS = {
@@ -13,7 +14,9 @@ const EVENT_CLASS = {
 }
 
 // An event block positioned inside the grid cell of its starting hour.
-export default function CalendarEvent({ session, lane = 0, lanes = 1, style, onOpen }) {
+export default function CalendarEvent({ session, lane = 0, lanes = 1, style }) {
+  const { name: moderatorName, fullName } = useModerators()
+  const triggers = useBookingTriggers()
   const startMin = toMinutes(session.start)
   const top = ((startMin % 60) / 60) * HOUR_HEIGHT
   const height = ((toMinutes(session.end) - startMin) / 60) * HOUR_HEIGHT
@@ -25,19 +28,20 @@ export default function CalendarEvent({ session, lane = 0, lanes = 1, style, onO
 
   return (
     <div
-      className={`${EVENT_CLASS[session.status]} atlas-rise`}
-      style={{ top, height, ...laneStyle, ...style }}
+      className={`${EVENT_CLASS[session.status]} atlas-row-in`}
+      style={{ top: `${top}rem`, height: `${height}rem`, ...laneStyle, ...style }}
       title={`${session.name} · ${session.start} - ${session.end}`}
-      {...(onOpen ? pressProps(onOpen, `${session.name}, ${session.start} to ${session.end}`) : {})}
+      {...triggers(session)}
+      aria-label={`${session.name}, ${session.start} to ${session.end}`}
     >
       <div className="atlas-week-event-status">
         <StatusDot status={session.status} pulse={live} />
-        <span className="atlas-eyebrow atlas-week-event-label">{STATUS[session.status].weekLabel}</span>
+        <span key={session.status} className="atlas-eyebrow atlas-week-event-label atlas-status-line">{STATUS[session.status].weekLabel}</span>
       </div>
       <div className="atlas-week-event-client">{session.short}</div>
       <div className="atlas-week-event-time">{session.start} - {session.end}</div>
       {session.status !== 'cancelled' && (
-        <div className="atlas-week-event-team">{teamShort(session.team).toUpperCase()}</div>
+        <div className="atlas-week-event-moderator" title={fullName(session.moderator)}>{moderatorName(session.moderator).toUpperCase()}</div>
       )}
     </div>
   )

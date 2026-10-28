@@ -1,11 +1,9 @@
 import { useCallback, useRef } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { prefersReducedMotion } from './motion.js'
+import { MS, prefersReducedMotion } from './motion.js'
 
-const LEAVE_MS = 220 // Twilight's station-leave duration
-
-// Navigate between views the way Twilight changes pages: the current view
-// fades down and out, then the next view rises in (.atlas-page-enter on mount).
+// Navigate between views: the current view fades out fast (180ms, --ease-exit),
+// then the next one enters with .atlas-view-enter (240ms) on mount.
 export default function useViewNavigate() {
   const navigate = useNavigate()
   const { pathname } = useLocation()
@@ -19,10 +17,10 @@ export default function useViewNavigate() {
       return
     }
     pending.current = true
-    content.classList.add('atlas-page-leave')
+    content.classList.add('atlas-view-leave')
     setTimeout(() => {
       pending.current = false
       navigate(to)
-    }, LEAVE_MS)
+    }, MS.exit)
   }, [navigate, pathname])
 }
