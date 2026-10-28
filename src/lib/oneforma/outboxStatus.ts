@@ -80,3 +80,23 @@ export function lastEmail(entries: OutboxEntry[], sessionId: string, to: EmailRe
   }
   return null
 }
+
+/** A recipient the latest emailable change offers, and the email sent to them since (null: not yet). */
+export interface OfferedEmail {
+  to: EmailRecipient
+  sent: EmailStatus | null
+}
+
+/**
+ * The booking's latest change that can be emailed (book, reschedule, cancel, moderator
+ * assigned) and, per recipient it offers, whether an email has gone out since.
+ * null when the latest such change was withdrawn or there is none.
+ */
+export function offeredEmails(entries: OutboxEntry[], sessionId: string): { template: EmailTemplate; at: string; recipients: OfferedEmail[] } | null {
+  const mine = entries.filter((e) => e.sessionId === sessionId && e.status !== 'withdrawn')
+  const change = [...mine].reverse().find((e) => e.offerEmail)
+  if (!change?.offerEmail) return null
+  const after = mine.filter((e) => e.createdAt >= change.createdAt && e.key !== change.key)
+  const recipients = change.offerEmail.to.map((to) => ({ to, sent: lastEmail(after, sessionId, to) }))
+  return { template: change.offerEmail.template, at: change.createdAt, recipients }
+}

@@ -261,7 +261,7 @@ function LiveMap({ onClose }) {
   const { map, baseZoom, tiles } = useLibreMap(containerRef)
   const revealMiles = useRevealMiles(map, baseZoom)
   const queue = useQueue()
-  const { sessions, removeSession } = useSchedule()
+  const { sessions, removeSession, openBooking, setNote } = useSchedule()
   const { name: moderatorName } = useModerators()
   const { focus, focusParticipant, selected, setSelected, clearFocus } = useMap()
   const toast = useToast()
@@ -387,12 +387,13 @@ function LiveMap({ onClose }) {
   }, [])
   // Saved: stay on the map with the person still picked. Their dot turns Booked,
   // and the tile's Book button becomes View booking, which takes focus.
+  // Booked from the map: open its details, like the Day view does, so the
+  // "Send emails" buttons and Undo are right there. The map stays behind it.
   const booked = useCallback((created, summary) => {
-    const name = bookingItem?.name ?? created.name
     setBooking(null)
-    toast(`Booked ${name} · ${summary}`, 'info', { label: 'Undo', onAction: () => removeSession(created.id) })
-    requestAnimationFrame(() => returnFocus(document.querySelector('.atlas-map-info .atlas-map-detail-expand')))
-  }, [bookingItem, toast, removeSession])
+    openBooking(created.id)
+    setNote({ id: created.id, text: `Booked ${summary}`, undo: () => removeSession(created.id), closes: true })
+  }, [openBooking, setNote, removeSession])
 
   return (
     <>

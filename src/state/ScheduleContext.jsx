@@ -63,6 +63,9 @@ const CHECK_STEP = {
   confirmed: { action: 'checklist.confirmed', text: 'Confirmed' },
 }
 
+/** Who a booking, reschedule or cancellation email can go to. */
+const BOTH = ['participant', 'moderator']
+
 const newId = () => `b-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`
 const stamp = (type, text) => ({ at: new Date().toISOString(), type, text })
 
@@ -132,12 +135,13 @@ export function ScheduleProvider({ children }) {
     return () => document.removeEventListener('visibilitychange', onShow)
   }, [loadRemote])
 
-  // `notify` everywhere below: { participant, moderator } (SyncContext RecordOptions).
-  const addSession = useCallback((session, { notify = null } = {}) => {
+  // Emails are never sent with a change. Each change records what it can offer
+  // (`offerEmail`); the booking drawer shows a button per recipient, and a click sends it.
+  const addSession = useCallback((session) => {
     const created = { id: newId(), ...session, history: [stamp('created', 'Booked')] }
     current.current = [...current.current, created]
     setSessions(current.current)
-    record('booking.created', created, { event: 'booking.created', notify })
+    record('booking.created', created, { event: 'booking.created', offerEmail: { template: 'booking-confirmed', to: BOTH } })
     return created
   }, [record])
 
@@ -155,13 +159,13 @@ export function ScheduleProvider({ children }) {
   }, [apply, record])
 
   // Admin only: assign, change or clear the moderator once the booking is ready.
-  // The moderator's email goes out now, not at booking, so they hear once they have it.
-  const assignModerator = useCallback((id, email, { notify = null } = {}) => {
+  // The drawer then offers to email the moderator the booking.
+  const assignModerator = useCallback((id, email) => {
     const before = current.current.find((s) => s.id === id)
     if (!before || before.moderator === email) return
     const text = !email ? 'Moderator unassigned' : before.moderator ? 'Moderator changed' : 'Moderator assigned'
     const next = apply(id, { moderator: email }, stamp('assigned', text))
-    const options = { notify: notify && { moderator: notify.moderator, template: 'booking-confirmed' }, label: text }
+    const options = { label: text, ...(email ? { offerEmail: { template: 'booking-confirmed', to: ['moderator'] } } : {}) }
     if (next.status === 'booked') {
       record('booking.updated', next, { ...options, event: 'booking.rescheduled', input: { reason: 'Updated moderator' } })
     } else {
@@ -169,14 +173,14 @@ export function ScheduleProvider({ children }) {
     }
   }, [apply, record])
 
-  // Send one recipient the booking's last email again. Nothing about the booking changes.
-  const resendEmail = useCallback((id, to, template) => {
+  // Send one recipient an email about the booking (first send or again). Nothing about the booking changes.
+  const resendEmail = useCallback((id, to, template, { again = false } = {}) => {
     const booking = current.current.find((s) => s.id === id)
     if (!booking) return null
     return record('email.resend', booking, {
       notify: { [to]: true, template },
       resend: { to, template },
-      label: `Email resent to ${to}`,
+      label: `Email ${again ? 'resent' : 'sent'} to ${to}`,
     })
   }, [record])
 
@@ -186,21 +190,21 @@ export function ScheduleProvider({ children }) {
     if (next) record('booking.updated', next)
   }, [apply, record])
 
-  const rescheduleSession = useCallback((id, slot, reason, { notify = null } = {}) => {
+  const rescheduleSession = useCallback((id, slot, reason) => {
     const before = current.current.find((s) => s.id === id)
     if (!before) return
     const from = { date: before.date, start: before.start, end: before.end }
     const next = apply(id, { ...slot, rescheduledFrom: from }, { ...stamp('rescheduled', 'Rescheduled'), from, to: slot, reason })
-    record('booking.rescheduled', next, { event: 'booking.rescheduled', input: { reason }, notify })
+    record('booking.rescheduled', next, { event: 'booking.rescheduled', input: { reason }, offerEmail: { template: 'booking-rescheduled', to: BOTH } })
   }, [apply, record])
 
   // Before it starts this cancels the booking; once in session it cancels the session.
-  const cancelSession = useCallback((id, reason, { notify = null } = {}) => {
+  const cancelSession = useCallback((id, reason) => {
     const wasLive = current.current.find((s) => s.id === id)?.status === 'insession'
     const next = apply(id, { status: 'cancelled', cancelReason: reason, cancelledAt: new Date().toISOString() },
       { ...stamp('cancelled', wasLive ? 'Session cancelled' : 'Cancelled'), reason })
     const type = wasLive ? 'session.cancelled' : 'booking.cancelled'
-    record(type, next, { event: type, input: { reason }, notify })
+    record(type, next, { event: type, input: { reason }, offerEmail: { template: 'booking-cancelled', to: BOTH } })
   }, [apply, record])
 
   const startSession = useCallback((id) => {

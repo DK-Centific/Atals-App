@@ -337,4 +337,6 @@ export interface OutboxEntry {
   saved: boolean
   emailed: EmailRecipient[]
   duplicate: boolean
+  /** Set on a change people may be told about: which email, and to whom. Nothing is sent until someone clicks. */
+  offerEmail?: { template: EmailTemplate; to: EmailRecipient[] }
 }

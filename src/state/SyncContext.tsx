@@ -42,8 +42,10 @@ export interface RecordOptions {
    * dropped when there is no one to send to: no participant email, or no moderator yet.
    */
   notify?: { participant?: boolean; moderator?: boolean; template?: EmailTemplate } | null
-  /** email.resend: which recipient gets which email again. */
+  /** email.resend: which recipient gets which email (first send or again). */
   resend?: { to: EmailRecipient; template: EmailTemplate }
+  /** This change can be emailed: the drawer offers a button per recipient until it is sent. */
+  offerEmail?: { template: EmailTemplate; to: EmailRecipient[] }
   /** Overrides the action's usual name in the sync panel. */
   label?: string
 }
@@ -112,7 +114,7 @@ export function SyncProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const record = useCallback((action: ActionKind, booking: AtlasBooking, options: RecordOptions = {}) => {
-    const { event: type, input = {}, notify, resend, label } = options
+    const { event: type, input = {}, notify, resend, offerEmail, label } = options
     const revisions = revisionsFor(booking)
     let event: CallbackEvent | null = null
     if (type && isLinked(booking)) {
@@ -152,6 +154,7 @@ export function SyncProvider({ children }: { children: ReactNode }) {
       saved: false,
       emailed: [],
       duplicate: false,
+      ...(offerEmail ? { offerEmail } : {}),
     }
     add(entry)
     return entry

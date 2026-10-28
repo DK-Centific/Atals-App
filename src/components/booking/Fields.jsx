@@ -1,6 +1,5 @@
 import { firstName } from '../../data/moderators.js'
 import { useModerators } from '../../state/ModeratorContext.jsx'
-import { DRY_RUN } from '../../lib/oneforma/config.ts'
 import { CheckIcon, ClockIcon } from '../Icons.jsx'
 
 // Form fields shared by the New Booking panel and the booking details panel.
@@ -86,63 +85,4 @@ export function ModeratorPicker({ value, onChange, busy = new Set(), optional = 
 const initials = (name) => {
   const words = name.trim().split(/\s+/)
   return ((words[0]?.[0] ?? '') + (words.length > 1 ? words[words.length - 1][0] : '')).toUpperCase()
-}
-
-function EmailCheck({ label, hint, checked, disabled, onChange }) {
-  return (
-    <label className={`atlas-check${disabled ? ' is-disabled' : ''}`}>
-      <input
-        type="checkbox"
-        className="atlas-check-box"
-        checked={checked && !disabled}
-        disabled={disabled}
-        onChange={(e) => onChange(e.target.checked)}
-      />
-      <span className="atlas-check-text">
-        <span className="atlas-check-label">{label}</span>
-        {hint && <span className="atlas-check-hint">{hint}</span>}
-      </span>
-    </label>
-  )
-}
-
-// Who gets emailed on book, reschedule and cancel: two separate choices, both off
-// by default (real participants), so nothing is sent unless someone ticks it. `value` is { participant, moderator }. `moderator` says what the
-// moderator box can do: 'on' (pickable), 'unassigned' (shown, off: an Admin
-// assigns later) or 'hidden' (this role doesn't email moderators here).
-export function EmailFields({ value, onChange, email, moderator = 'on', participantHidden = false }) {
-  const noEmail = !email?.trim()
-  return (
-    <div className="atlas-email-fields" role="group" aria-label="Emails">
-      {!participantHidden && <EmailCheck
-        label="Email participant"
-        hint={noEmail ? 'No participant email on file.' : null}
-        checked={value.participant}
-        disabled={noEmail}
-        onChange={(participant) => onChange({ ...value, participant })}
-      />}
-      {moderator !== 'hidden' && (
-        <EmailCheck
-          label="Email moderator"
-          hint={moderator === 'unassigned' ? 'Admin assigns the moderator. They’re emailed then.' : 'Includes the checklist link.'}
-          checked={value.moderator}
-          disabled={moderator === 'unassigned'}
-          onChange={(m) => onChange({ ...value, moderator: m })}
-        />
-      )}
-      {DRY_RUN && <p className="atlas-check-hint atlas-email-dry">Dry run: nothing is emailed until the action flow is set.</p>}
-    </div>
-  )
-}
-
-/** The `notify` option for ScheduleContext from the boxes and what the form allows. */
-export const notifyFrom = (value, { moderator = 'on' } = {}) => ({
-  participant: value.participant,
-  moderator: moderator === 'on' && value.moderator,
-})
-
-/** " · email to … queued" for the Saved note; a participant with no email isn't counted. */
-export const emailSummary = (n, email) => {
-  const who = [n.participant && email?.trim() && 'participant', n.moderator && 'moderator'].filter(Boolean)
-  return who.length ? ` · email to ${who.join(' and ')} queued` : ''
 }

@@ -14,13 +14,11 @@ import { PlusIcon } from '../Icons.jsx'
 import QueueSyncStatus from '../sync/QueueSyncStatus.jsx'
 import { useModerators } from '../../state/ModeratorContext.jsx'
 import { useRole } from '../../state/RoleContext.jsx'
-import { EmailFields, ModeratorPicker, TextField, TimeField, emailSummary, notifyFrom } from '../booking/Fields.jsx'
+import { ModeratorPicker, TextField, TimeField } from '../booking/Fields.jsx'
 
 const DEFAULTS = {
   date: TODAY, start: '17:00', end: '19:00', moderator: '',
   name: '', location: '', email: '', phone: '', notes: '', participantId: '', requestId: '',
-  // Off by default: participants are real people, so an email goes out only when someone ticks it.
-  emails: { participant: false, moderator: false },
 }
 
 // "New Booking" form: pick a day, a time range and the participant, then book. The
@@ -91,8 +89,6 @@ export default function BookingPanel({ participant = null, onBooked = null }) {
     const clash = form.moderator && findConflict(sessions, form)
     const problem = checkTimes(form) ?? checkDetails(form) ?? (clash && conflictMessage(clash, moderatorName))
     if (problem) return fail(problem)
-    const moderatorBox = form.moderator ? 'on' : 'unassigned'
-    const notify = notifyFrom(form.emails, { moderator: moderatorBox })
     const miles = bookingRouteMiles(queue.find((p) => p.id === form.participantId))
     const created = addSession({
       date: form.date,
@@ -107,8 +103,8 @@ export default function BookingPanel({ participant = null, onBooked = null }) {
       notes: form.notes.trim(),
       ...(form.participantId ? { participantId: form.participantId, requestId: form.requestId } : {}),
       ...(miles ?? {}),
-    }, { notify })
-    const summary = `${longDayLabel(form.date)} · ${form.start} – ${form.end} · ${moderatorLabel(form.moderator)}${emailSummary(notify, form.email)}`
+    })
+    const summary = `${longDayLabel(form.date)} · ${form.start} – ${form.end} · ${moderatorLabel(form.moderator)}`
     if (onBooked) {
       onBooked(created, summary)
       return
@@ -223,8 +219,8 @@ export default function BookingPanel({ participant = null, onBooked = null }) {
   )
   const footer = (
     <div className="atlas-booking-footer">
-      <EmailFields value={form.emails} onChange={(emails) => set({ emails })} email={form.email} moderator={form.moderator ? 'on' : 'unassigned'} />
       <button type="button" className="atlas-btn-primary" onClick={book}>Book Session</button>
+      <p className="atlas-booking-foot-hint">Nothing is emailed yet. You choose who to email once it’s booked.</p>
     </div>
   )
 
