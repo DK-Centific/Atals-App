@@ -254,6 +254,13 @@ export interface NotifyRequest {
 
 export type EmailRecipient = 'participant' | 'moderator'
 
+/** Action v7's per-recipient email result. */
+export interface EmailedItem {
+  to: EmailRecipient | 'moderators'
+  status?: string | null
+  message?: string | null
+}
+
 /** email.resend: send one recipient the last email again, nothing else changes. */
 export interface ResendRequest {
   bookingId: string
@@ -289,8 +296,11 @@ export interface RelayReply {
 export interface ActionReply {
   actionId: string
   saved: boolean
-  /** Older flows answer 'moderators'; transport reads it as 'moderator'. */
-  emailed?: (EmailRecipient | 'moderators')[]
+  /**
+   * Who was emailed: plain words, or (Action v7) one object per recipient.
+   * Older flows answer 'moderators'; transport reads it as 'moderator'.
+   */
+  emailed?: (EmailRecipient | 'moderators' | EmailedItem)[]
   oneforma?: RelayReply | null
   /** true when the flow had already done this actionId and skipped it. */
   duplicate?: boolean

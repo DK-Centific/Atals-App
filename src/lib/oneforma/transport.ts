@@ -4,7 +4,7 @@
 
 import { getToken } from '../auth/session.ts'
 import { ACTION_URL } from './config.ts'
-import type { ActionReply, ActionRequest, EmailRecipient, OutboxStatus, RelayReply } from './types.ts'
+import type { ActionReply, ActionRequest, EmailRecipient, EmailedItem, OutboxStatus, RelayReply } from './types.ts'
 
 const TIMEOUT_MS = 20000
 const RECEIPTS = new Set(['APPLIED', 'WAITING_REFERENCE', 'IGNORED_STALE'])
@@ -39,11 +39,25 @@ export function classify(reply: RelayReply): Pick<Delivery, 'status' | 'message'
   return { status: 'rejected', message: message ?? why[reply.httpStatus] ?? `Saved. OneForma answered ${reply.httpStatus}`, duplicate }
 }
 
+const NOT_SENT = new Set(['failed', 'error', 'skipped', 'not_sent', 'not sent', 'rejected'])
+
+/** Who was emailed, from either reply form: ["participant"] or [{ to, status, message }]. */
+export function readEmailed(list: unknown): Emailed {
+  if (!Array.isArray(list)) return []
+  const who = list.flatMap((item: string | EmailedItem) => {
+    if (typeof item === 'string') return [item]
+    if (item && typeof item === 'object' && typeof item.to === 'string') {
+      return NOT_SENT.has(String(item.status ?? '').toLowerCase()) ? [] : [item.to]
+    }
+    return []
+  })
+  return [...new Set(who.map((w) => (w === 'moderators' ? 'moderator' : w)))]
+    .filter((w): w is EmailRecipient => w === 'participant' || w === 'moderator')
+}
+
 /** The flow's whole answer: was it saved, who was emailed, and OneForma's receipt. */
 export function readReply(httpStatus: number, reply: Partial<ActionReply> | null, request: ActionRequest): Delivery {
-  const emailed: Emailed = Array.isArray(reply?.emailed)
-    ? [...new Set(reply.emailed.map((who) => (who === 'moderators' ? 'moderator' : who)))]
-    : []
+  const emailed = readEmailed(reply?.emailed)
   const message = reply?.message ?? null
   if (httpStatus === 429 || httpStatus >= 500 || (httpStatus < 300 && reply?.saved === false)) {
     return { status: 'failed', message: message ?? `Not saved yet: the flow answered ${httpStatus}`, duplicate: false, saved: false, emailed }
