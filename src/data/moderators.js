@@ -15,6 +15,9 @@ export const SEED_MODERATORS = local.MODERATORS ?? Array.from({ length: 8 }, (_,
 /** The seed accounts' password; null without the local file, so nothing is seeded. */
 export const SEED_PASSWORD = local.PASSWORD ?? null
 
+/** Filter and Checklist value for bookings no moderator has been assigned to yet. */
+export const UNASSIGNED = 'unassigned'
+
 /** Sample sessions are spread round-robin across the seed moderators. */
 export const seedModerator = (i) => SEED_MODERATORS[i % SEED_MODERATORS.length].email
 

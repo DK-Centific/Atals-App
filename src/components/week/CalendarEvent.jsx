@@ -1,4 +1,5 @@
 import { STATUS, toMinutes } from '../../data/schedule.js'
+import { needsModerator } from '../../lib/bookings.js'
 import { useModerators } from '../../state/ModeratorContext.jsx'
 import { StatusDot } from '../StatusLegend.jsx'
 import { useBookingTriggers } from '../../state/ScheduleContext.jsx'
@@ -40,7 +41,9 @@ export default function CalendarEvent({ session, lane = 0, lanes = 1, style }) {
       </div>
       <div className="atlas-week-event-client">{session.short}</div>
       <div className="atlas-week-event-time">{session.start} - {session.end}</div>
-      {session.status !== 'cancelled' && (
+      {needsModerator(session) ? (
+        <div className="atlas-week-event-moderator atlas-needs-moderator" title="An Admin assigns the moderator">NEEDS MODERATOR</div>
+      ) : session.status !== 'cancelled' && session.moderator && (
         <div className="atlas-week-event-moderator" title={fullName(session.moderator)}>{moderatorName(session.moderator).toUpperCase()}</div>
       )}
     </div>

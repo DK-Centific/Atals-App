@@ -3,6 +3,7 @@ import Sidebar from '../components/Sidebar.jsx'
 import { StatusDot } from '../components/StatusLegend.jsx'
 import { STATUS, TODAY } from '../data/schedule.js'
 import { HOURLY_RATE, MILEAGE_RATE, billableHours, formatHours, formatUsd, isBillable } from '../lib/billing.js'
+import { needsModerator } from '../lib/bookings.js'
 import { estimateNote, formatMi, roundTrip, useOneWayMiles } from '../lib/mileage.js'
 import { shortDate, weekOf, weekRangeLabel } from '../lib/dates.js'
 import CountUp from '../motion/CountUp.jsx'
@@ -156,10 +157,16 @@ export default function TrackerView() {
     return { ...d, counts: countBy(list), total: list.length }
   })
 
-  // Every active moderator, plus anyone no longer listed who still has sessions here.
-  const emails = [...new Set([...moderators.map((m) => m.email), ...inRange.map((s) => s.moderator).filter(Boolean)])]
+  // Live bookings still waiting for an Admin to assign a moderator.
+  const unassigned = inRange.filter(needsModerator).length
+
+  // Every active moderator, plus anyone no longer listed who still has sessions here,
+  // plus an Unassigned row ('') while any session has no moderator. Completed work
+  // there should be rare: it means a session ran without anyone being assigned.
+  const hasUnassigned = inRange.some((s) => !s.moderator)
+  const emails = [...new Set([...moderators.map((m) => m.email), ...inRange.map((s) => s.moderator).filter(Boolean)]), ...(hasUnassigned ? [''] : [])]
   const rows = emails.map((email) => {
-    const list = inRange.filter((s) => s.moderator === email)
+    const list = inRange.filter((s) => (email ? s.moderator === email : !s.moderator))
     const c = countBy(list)
     const modDue = list.filter((s) => s.status !== 'cancelled' && s.date <= TODAY)
     // Completed sessions are billable: their hours and round-trip miles.
@@ -170,7 +177,7 @@ export default function TrackerView() {
     const hours = done.reduce((h, s) => h + billableHours(s), 0)
     const miles = sum(trips)
     return {
-      email, name: moderatorName(email), full: fullName(email), c,
+      email, name: email ? moderatorName(email) : 'Unassigned', full: email ? fullName(email) : 'No moderator assigned yet', c,
       assigned: list.length - c.cancelled,
       confirmed: modDue.filter((s) => s.confirmedAt).length, due: modDue.length,
       recorded: list.filter((s) => s.recordings?.some((r) => r.status === 'completed')).length,
@@ -180,7 +187,8 @@ export default function TrackerView() {
       mileagePay: miles * MILEAGE_RATE, laborPay: hours * HOURLY_RATE,
     }
   }).filter((r) => r.c.booked + r.c.insession + r.c.completed + r.c.cancelled > 0 || moderators.some((m) => m.email === r.email))
-    .sort((a, b) => b.hours - a.hours || b.assigned - a.assigned || a.name.localeCompare(b.name))
+    // Unassigned goes last, whatever its numbers.
+    .sort((a, b) => Number(!a.email) - Number(!b.email) || b.hours - a.hours || b.assigned - a.assigned || a.name.localeCompare(b.name))
 
   const totals = rows.reduce((t, r) => ({
     assigned: t.assigned + r.assigned, completed: t.completed + r.c.completed, hours: t.hours + r.hours,
@@ -214,6 +222,7 @@ export default function TrackerView() {
             <Tile label="Completed" value={counts.completed} note={`${pct(counts.completed, scheduled)}% of scheduled`} />
             <Tile label="Weekly target" value={pct(weekDone, WEEKLY_TARGET)} suffix="%" note={`${weekDone} of ${WEEKLY_TARGET} this week`} />
             <Tile label="Cancelled" value={counts.cancelled} note={`${pct(counts.cancelled, total)}% of bookings`} />
+            <Tile label="Needs moderator" value={unassigned} note={unassigned ? 'Booked, waiting for an Admin to assign' : 'Every live booking is staffed'} />
             <Tile label="Checklist confirmed" value={pct(confirmed, due.length)} suffix="%" note={`${confirmed} of ${due.length} sessions due`} />
             <Tile
               label="Billable hours"
@@ -253,7 +262,7 @@ export default function TrackerView() {
                 </thead>
                 <tbody>
                   {rows.map((r) => (
-                    <tr key={r.email}>
+                    <tr key={r.email || 'unassigned'} className={r.email ? undefined : 'atlas-tracker-row--unassigned'}>
                       <th scope="row" title={r.full}>{r.name}</th>
                       <td>{r.assigned}</td>
                       <td>{r.c.completed}</td>
@@ -298,7 +307,7 @@ export default function TrackerView() {
                 </thead>
                 <tbody>
                   {rows.map((r) => (
-                    <tr key={r.email}>
+                    <tr key={r.email || 'unassigned'} className={r.email ? undefined : 'atlas-tracker-row--unassigned'}>
                       <th scope="row" title={r.full}>{r.name}</th>
                       <td>{r.assigned + r.c.cancelled}</td>
                       <td>{r.c.completed}</td>

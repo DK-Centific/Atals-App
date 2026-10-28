@@ -1,4 +1,5 @@
 import { STATUS } from '../../data/schedule.js'
+import { needsModerator } from '../../lib/bookings.js'
 import { useModerators } from '../../state/ModeratorContext.jsx'
 import { PinIcon } from '../Icons.jsx'
 import { StatusDot } from '../StatusLegend.jsx'
@@ -41,7 +42,11 @@ export default function SessionCard({ session, style }) {
 
       <div className="atlas-session-moderator">
         <div className="atlas-eyebrow atlas-session-moderator-label">MODERATOR</div>
-        <div className="atlas-session-moderator-badge" title={`Moderator: ${fullName(session.moderator)}`}>{moderatorName(session.moderator)}</div>
+        {needsModerator(session) ? (
+          <div className="atlas-session-moderator-badge atlas-needs-moderator" title="An Admin assigns the moderator">Needs moderator</div>
+        ) : (
+          <div className="atlas-session-moderator-badge" title={`Moderator: ${fullName(session.moderator)}`}>{moderatorName(session.moderator) || '—'}</div>
+        )}
       </div>
     </article>
   )

@@ -31,7 +31,9 @@ export function ModeratorProvider({ children }) {
     // Sessions may name someone no longer listed (turned off, renamed): fall back to their email.
     const name = (email) => (index.has(email) ? firstName(index.get(email)) : (email?.split('@')[0] ?? ''))
     const fullName = (email) => index.get(email)?.displayName ?? email ?? ''
-    return { moderators, name, fullName, refresh }
+    // For cards and lists: who it is, or that an Admin still has to assign someone.
+    const label = (email) => (email ? name(email) : 'Needs moderator')
+    return { moderators, name, fullName, label, refresh }
   }, [moderators, refresh])
 
   return <ModeratorContext.Provider value={value}>{children}</ModeratorContext.Provider>

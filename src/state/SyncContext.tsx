@@ -10,7 +10,8 @@ import type { EventInput } from '../lib/oneforma/events.ts'
 import { nowIso } from '../lib/oneforma/time.ts'
 import { deliver } from '../lib/oneforma/transport.ts'
 import type {
-  ActionKind, ActionRequest, BookingRow, CallbackEvent, CallbackEventType, OutboxEntry, OutboxStatus,
+  ActionKind, ActionRequest, BookingRow, CallbackEvent, CallbackEventType, EmailRecipient, EmailTemplate,
+  NotifyRequest, OutboxEntry, OutboxStatus,
 } from '../lib/oneforma/types.ts'
 
 // The Atlas outbox: every booking change becomes one action for the Power Automate
@@ -36,8 +37,13 @@ export interface RecordOptions {
   /** The OneForma event this action carries, when the booking is linked. */
   event?: CallbackEventType
   input?: EventInput
-  /** Email the participant and the session's moderator (book, reschedule, cancel). */
-  notify?: boolean
+  /**
+   * Who to email (book, reschedule, cancel, moderator assigned, resend). Each one is
+   * dropped when there is no one to send to: no participant email, or no moderator yet.
+   */
+  notify?: { participant?: boolean; moderator?: boolean; template?: EmailTemplate } | null
+  /** email.resend: which recipient gets which email again. */
+  resend?: { to: EmailRecipient; template: EmailTemplate }
   /** Overrides the action's usual name in the sync panel. */
   label?: string
 }
@@ -106,7 +112,7 @@ export function SyncProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const record = useCallback((action: ActionKind, booking: AtlasBooking, options: RecordOptions = {}) => {
-    const { event: type, input = {}, notify, label } = options
+    const { event: type, input = {}, notify, resend, label } = options
     const revisions = revisionsFor(booking)
     let event: CallbackEvent | null = null
     if (type && isLinked(booking)) {
@@ -115,7 +121,10 @@ export function SyncProvider({ children }: { children: ReactNode }) {
       event = buildEvent(type, booking, revisions[key], input)
     }
     const problem = event ? checkEvent(event) : null
-    const template = notify ? EMAIL_FOR[action] : undefined
+    const template = notify?.template ?? EMAIL_FOR[action]
+    const participant = Boolean(notify?.participant && booking.email?.trim())
+    const moderator = Boolean(notify?.moderator && booking.moderator)
+    const emails: NotifyRequest | null = template && (participant || moderator) ? { template, participant, moderator } : null
     const request: ActionRequest = {
       schemaVersion: 1,
       // A OneForma eventId is already unique and stable; other actions get a time-based id.
@@ -124,7 +133,8 @@ export function SyncProvider({ children }: { children: ReactNode }) {
       environment: OF_ENV,
       occurredAt: input.occurredAt ?? nowIso(),
       booking: toBookingRow({ ...booking, revisions }),
-      notify: template ? { template, participant: Boolean(booking.email?.trim()), moderators: true } : null,
+      notify: emails,
+      ...(resend ? { resend: { bookingId: booking.id, ...resend } } : {}),
       oneforma: event,
     }
     const entry: OutboxEntry = {

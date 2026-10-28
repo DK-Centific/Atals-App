@@ -4,7 +4,7 @@ import { StatusDot } from '../StatusLegend.jsx'
 // Hero card for the session currently in progress. The map is opened from the
 // Map tile above it.
 export default function ActiveSessionCard({ session }) {
-  const { name: moderatorName } = useModerators()
+  const { label: moderatorLabel } = useModerators()
   if (!session) return null
 
   return (
@@ -19,7 +19,7 @@ export default function ActiveSessionCard({ session }) {
 
         <div className="atlas-eyebrow atlas-live-card-status">
           <StatusDot status="insession" pulse />
-          IN SESSION • MODERATOR {moderatorName(session.moderator).toUpperCase()}
+          IN SESSION • {session.moderator ? `MODERATOR ${moderatorLabel(session.moderator).toUpperCase()}` : 'NEEDS MODERATOR'}
         </div>
 
         <div className="atlas-live-card-name">{session.name}</div>

@@ -688,7 +688,7 @@ function TripPanel({ trip }) {
 function InfoTile({ participant: p, trip, onRoute, onDismiss, onBook }) {
   const { openBooking, triggerRef } = useSchedule()
   const { canBook } = useRole()
-  const { name: moderatorName } = useModerators()
+  const { label: moderatorLabel } = useModerators()
   const s = p.session
 
   return (
@@ -717,7 +717,7 @@ function InfoTile({ participant: p, trip, onRoute, onDismiss, onBook }) {
           <div className="atlas-map-detail-assigned">
             <div className="atlas-eyebrow atlas-map-detail-label">{s ? 'BOOKING' : 'ENDORSED'}</div>
             <div className="atlas-map-detail-value atlas-map-detail-value--accent">
-              {s ? `${s.date === TODAY ? 'Today' : longDayLabel(s.date)} ${s.start} · ${moderatorName(s.moderator)}` : (p.joinTime?.slice(0, 10) ?? '—')}
+              {s ? `${s.date === TODAY ? 'Today' : longDayLabel(s.date)} ${s.start} · ${moderatorLabel(s.moderator)}` : (p.joinTime?.slice(0, 10) ?? '—')}
             </div>
           </div>
         </div>

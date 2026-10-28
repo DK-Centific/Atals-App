@@ -238,16 +238,27 @@ export type ActionKind =
   | 'recording.completed'
   | 'recording.failed'
   | 'qa.updated'
+  | 'email.resend'
   | 'checklist.arrived'
   | 'checklist.contacted'
   | 'checklist.confirmed'
 
 export type EmailTemplate = 'booking-confirmed' | 'booking-rescheduled' | 'booking-cancelled'
 
+/** Who gets which email. The moderator is only emailed when one is assigned. */
 export interface NotifyRequest {
   template: EmailTemplate
   participant: boolean
-  moderators: boolean
+  moderator: boolean
+}
+
+export type EmailRecipient = 'participant' | 'moderator'
+
+/** email.resend: send one recipient the last email again, nothing else changes. */
+export interface ResendRequest {
+  bookingId: string
+  to: EmailRecipient
+  template: EmailTemplate
 }
 
 /** What the app posts to the Atlas action flow: save the row, send emails, tell OneForma. */
@@ -260,6 +271,8 @@ export interface ActionRequest {
   occurredAt: string
   booking: BookingRow
   notify: NotifyRequest | null
+  /** Set on email.resend only. */
+  resend?: ResendRequest
   /** Forwarded to OneForma exactly as is; null when OneForma has no event for this. */
   oneforma: CallbackEvent | null
 }
@@ -276,7 +289,8 @@ export interface RelayReply {
 export interface ActionReply {
   actionId: string
   saved: boolean
-  emailed?: ('participant' | 'moderators')[]
+  /** Older flows answer 'moderators'; transport reads it as 'moderator'. */
+  emailed?: (EmailRecipient | 'moderators')[]
   oneforma?: RelayReply | null
   /** true when the flow had already done this actionId and skipped it. */
   duplicate?: boolean
@@ -311,6 +325,6 @@ export interface OutboxEntry {
   sentAt: string | null
   attempts: number
   saved: boolean
-  emailed: ('participant' | 'moderators')[]
+  emailed: EmailRecipient[]
   duplicate: boolean
 }

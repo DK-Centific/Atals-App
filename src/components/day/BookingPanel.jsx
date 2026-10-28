@@ -13,14 +13,16 @@ import { bookingRouteMiles } from '../../lib/mileage.js'
 import { PlusIcon } from '../Icons.jsx'
 import { useModerators } from '../../state/ModeratorContext.jsx'
 import { useRole } from '../../state/RoleContext.jsx'
-import { ModeratorPicker, NotifyField, TextField, TimeField } from '../booking/Fields.jsx'
+import { EmailFields, ModeratorPicker, TextField, TimeField, emailSummary, notifyFrom } from '../booking/Fields.jsx'
 
 const DEFAULTS = {
   date: TODAY, start: '17:00', end: '19:00', moderator: '',
-  name: '', location: '', email: '', phone: '', notes: '', participantId: '', requestId: '', notify: true,
+  name: '', location: '', email: '', phone: '', notes: '', participantId: '', requestId: '',
+  emails: { participant: true, moderator: true },
 }
 
-// "New Booking" form: pick a day, a time range, the participant and one moderator, then book.
+// "New Booking" form: pick a day, a time range and the participant, then book. The
+// moderator is optional: left Unassigned, an Admin assigns one once it is ready.
 // On the Day view it is a panel. The map's booking sheet passes `participant`
 // (fixed, so the queue picker hides) and `onBooked`, and supplies its own header.
 export default function BookingPanel({ participant = null, onBooked = null }) {
@@ -30,7 +32,7 @@ export default function BookingPanel({ participant = null, onBooked = null }) {
   const panelRef = useRef(null)
   const toast = useToast()
   const [form, setForm] = useState(DEFAULTS)
-  const { name: moderatorName } = useModerators()
+  const { label: moderatorLabel, name: moderatorName } = useModerators()
   const { isAdmin } = useRole()
   const [slide, setSlide] = useState({ dir: null, key: 0 })
   const [shakeKey, setShakeKey] = useState(0)
@@ -87,6 +89,8 @@ export default function BookingPanel({ participant = null, onBooked = null }) {
     const clash = form.moderator && findConflict(sessions, form)
     const problem = checkTimes(form) ?? checkDetails(form) ?? (clash && conflictMessage(clash, moderatorName))
     if (problem) return fail(problem)
+    const moderatorBox = form.moderator ? 'on' : 'unassigned'
+    const notify = notifyFrom(form.emails, { moderator: moderatorBox })
     const miles = bookingRouteMiles(queue.find((p) => p.id === form.participantId))
     const created = addSession({
       date: form.date,
@@ -101,8 +105,8 @@ export default function BookingPanel({ participant = null, onBooked = null }) {
       notes: form.notes.trim(),
       ...(form.participantId ? { participantId: form.participantId, requestId: form.requestId } : {}),
       ...(miles ?? {}),
-    }, { notify: form.notify })
-    const summary = `${longDayLabel(form.date)} · ${form.start} – ${form.end} · ${moderatorName(form.moderator)}${form.notify ? ' · email queued' : ''}`
+    }, { notify })
+    const summary = `${longDayLabel(form.date)} · ${form.start} – ${form.end} · ${moderatorLabel(form.moderator)}${emailSummary(notify, form.email)}`
     if (onBooked) {
       onBooked(created, summary)
       return
@@ -204,16 +208,17 @@ export default function BookingPanel({ participant = null, onBooked = null }) {
 
       <div className="atlas-booking-moderators">
         <div className="atlas-booking-moderators-head">
-          <span className="atlas-eyebrow">ASSIGN A MODERATOR</span>
+          <span className="atlas-eyebrow">MODERATOR · OPTIONAL</span>
           {isAdmin && <Link to="/admin/users" className="atlas-moderator-create atlas-link">MANAGE</Link>}
         </div>
-        <ModeratorPicker value={form.moderator} busy={busy} onChange={(moderator) => set({ moderator })} />
+        {!isAdmin && <p className="atlas-booking-moderators-hint">Leave it Unassigned if you don’t know yet. An Admin assigns one once the booking is ready.</p>}
+        <ModeratorPicker optional value={form.moderator} busy={busy} onChange={(moderator) => set({ moderator })} />
       </div>
     </>
   )
   const footer = (
     <div className="atlas-booking-footer">
-      <NotifyField checked={form.notify} onChange={(notify) => set({ notify })} email={form.email} />
+      <EmailFields value={form.emails} onChange={(emails) => set({ emails })} email={form.email} moderator={form.moderator ? 'on' : 'unassigned'} />
       <button type="button" className="atlas-btn-primary" onClick={book}>Book Session</button>
     </div>
   )

@@ -20,7 +20,7 @@ const FILTERS = [
 export function emailText(e) {
   if (e.emailed?.length) return `Emailed ${e.emailed.join(' and ')}`
   const n = e.request.notify
-  const who = [n?.participant && 'participant', n?.moderators && 'moderators'].filter(Boolean)
+  const who = [n?.participant && 'participant', n?.moderator && 'moderator'].filter(Boolean)
   if (!who.length) return 'No email'
   return e.saved ? 'Email not sent' : `Emails ${who.join(' and ')}`
 }

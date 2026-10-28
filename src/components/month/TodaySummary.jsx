@@ -8,7 +8,7 @@ import { useModerators } from '../../state/ModeratorContext.jsx'
 // "Today's sessions" strip above the month grid. The month view decides what is
 // shown (cancelled sessions are left out, as in the design, unless filtered for).
 export default function TodaySummary({ date, sessions }) {
-  const { name: moderatorName } = useModerators()
+  const { label: moderatorLabel } = useModerators()
   const goTo = useViewNavigate()
   const triggers = useBookingTriggers()
   const delay = useStagger(sessions.map((s) => s.id))
@@ -36,7 +36,7 @@ export default function TodaySummary({ date, sessions }) {
               <div className="atlas-today-text">
                 <span className="atlas-today-client">{s.summary}</span>
                 <span className="atlas-today-meta">
-                  {moderatorName(s.moderator)} • {s.start}
+                  <span className={s.moderator ? undefined : 'atlas-needs-moderator-text'}>{moderatorLabel(s.moderator)}</span> • {s.start}
                 </span>
               </div>
             </div>

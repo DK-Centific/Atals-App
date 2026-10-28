@@ -132,7 +132,8 @@ export function ScheduleProvider({ children }) {
     return () => document.removeEventListener('visibilitychange', onShow)
   }, [loadRemote])
 
-  const addSession = useCallback((session, { notify = false } = {}) => {
+  // `notify` everywhere below: { participant, moderator } (SyncContext RecordOptions).
+  const addSession = useCallback((session, { notify = null } = {}) => {
     const created = { id: newId(), ...session, history: [stamp('created', 'Booked')] }
     current.current = [...current.current, created]
     setSessions(current.current)
@@ -153,13 +154,39 @@ export function ScheduleProvider({ children }) {
     }
   }, [apply, record])
 
+  // Admin only: assign, change or clear the moderator once the booking is ready.
+  // The moderator's email goes out now, not at booking, so they hear once they have it.
+  const assignModerator = useCallback((id, email, { notify = null } = {}) => {
+    const before = current.current.find((s) => s.id === id)
+    if (!before || before.moderator === email) return
+    const text = !email ? 'Moderator unassigned' : before.moderator ? 'Moderator changed' : 'Moderator assigned'
+    const next = apply(id, { moderator: email }, stamp('assigned', text))
+    const options = { notify: notify && { moderator: notify.moderator, template: 'booking-confirmed' }, label: text }
+    if (next.status === 'booked') {
+      record('booking.updated', next, { ...options, event: 'booking.rescheduled', input: { reason: 'Updated moderator' } })
+    } else {
+      record('booking.updated', next, options)
+    }
+  }, [apply, record])
+
+  // Send one recipient the booking's last email again. Nothing about the booking changes.
+  const resendEmail = useCallback((id, to, template) => {
+    const booking = current.current.find((s) => s.id === id)
+    if (!booking) return null
+    return record('email.resend', booking, {
+      notify: { [to]: true, template },
+      resend: { to, template },
+      label: `Email resent to ${to}`,
+    })
+  }, [record])
+
   // Admin correction of a booking's round-trip miles (billing); saved like any edit.
   const setRouteMiles = useCallback((id, miles) => {
     const next = apply(id, { routeMiles: miles, routeMilesSource: 'admin' }, stamp('edited', `Miles set to ${miles} by admin`))
     if (next) record('booking.updated', next)
   }, [apply, record])
 
-  const rescheduleSession = useCallback((id, slot, reason, { notify = false } = {}) => {
+  const rescheduleSession = useCallback((id, slot, reason, { notify = null } = {}) => {
     const before = current.current.find((s) => s.id === id)
     if (!before) return
     const from = { date: before.date, start: before.start, end: before.end }
@@ -168,7 +195,7 @@ export function ScheduleProvider({ children }) {
   }, [apply, record])
 
   // Before it starts this cancels the booking; once in session it cancels the session.
-  const cancelSession = useCallback((id, reason, { notify = false } = {}) => {
+  const cancelSession = useCallback((id, reason, { notify = null } = {}) => {
     const wasLive = current.current.find((s) => s.id === id)?.status === 'insession'
     const next = apply(id, { status: 'cancelled', cancelReason: reason, cancelledAt: new Date().toISOString() },
       { ...stamp('cancelled', wasLive ? 'Session cancelled' : 'Cancelled'), reason })
@@ -264,11 +291,11 @@ export function ScheduleProvider({ children }) {
   const startDraft = useCallback((participantId) => setDraftState({ participantId, key: Date.now() }), [])
 
   const value = useMemo(() => ({
-    sessions, addSession, updateSession, setRouteMiles, rescheduleSession, cancelSession, startSession, completeSession,
+    sessions, addSession, updateSession, assignModerator, resendEmail, setRouteMiles, rescheduleSession, cancelSession, startSession, completeSession,
     interruptSession, logRecording, setQa, restoreSession, removeSession, checkStep,
     panel, openBooking, openDay, closePanel, menu, openMenu, closeMenu,
     note, setNote, clearNote, triggerRef, draft, startDraft,
-  }), [draft, startDraft, sessions, addSession, updateSession, setRouteMiles, rescheduleSession, cancelSession, startSession, completeSession,
+  }), [draft, startDraft, sessions, addSession, updateSession, assignModerator, resendEmail, setRouteMiles, rescheduleSession, cancelSession, startSession, completeSession,
     interruptSession, logRecording, setQa, restoreSession, removeSession, checkStep,
     panel, openBooking, openDay, closePanel, menu, openMenu, closeMenu, note, clearNote])
   return <ScheduleContext.Provider value={value}>{children}</ScheduleContext.Provider>

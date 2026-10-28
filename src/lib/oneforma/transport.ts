@@ -4,12 +4,12 @@
 
 import { getToken } from '../auth/session.ts'
 import { ACTION_URL } from './config.ts'
-import type { ActionReply, ActionRequest, OutboxStatus, RelayReply } from './types.ts'
+import type { ActionReply, ActionRequest, EmailRecipient, OutboxStatus, RelayReply } from './types.ts'
 
 const TIMEOUT_MS = 20000
 const RECEIPTS = new Set(['APPLIED', 'WAITING_REFERENCE', 'IGNORED_STALE'])
 
-type Emailed = ('participant' | 'moderators')[]
+type Emailed = EmailRecipient[]
 
 export interface Delivery {
   status: OutboxStatus
@@ -41,7 +41,9 @@ export function classify(reply: RelayReply): Pick<Delivery, 'status' | 'message'
 
 /** The flow's whole answer: was it saved, who was emailed, and OneForma's receipt. */
 export function readReply(httpStatus: number, reply: Partial<ActionReply> | null, request: ActionRequest): Delivery {
-  const emailed: Emailed = Array.isArray(reply?.emailed) ? reply.emailed : []
+  const emailed: Emailed = Array.isArray(reply?.emailed)
+    ? [...new Set(reply.emailed.map((who) => (who === 'moderators' ? 'moderator' : who)))]
+    : []
   const message = reply?.message ?? null
   if (httpStatus === 429 || httpStatus >= 500 || (httpStatus < 300 && reply?.saved === false)) {
     return { status: 'failed', message: message ?? `Not saved yet: the flow answered ${httpStatus}`, duplicate: false, saved: false, emailed }

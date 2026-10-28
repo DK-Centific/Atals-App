@@ -55,6 +55,7 @@ export const ACTION_LABEL: Record<ActionKind, string> = {
   'recording.completed': 'Recording logged',
   'recording.failed': 'Recording failed',
   'qa.updated': 'QA result',
+  'email.resend': 'Email resent',
   'checklist.arrived': 'Arrived at location',
   'checklist.contacted': 'Called participant',
   'checklist.confirmed': 'Confirmed',

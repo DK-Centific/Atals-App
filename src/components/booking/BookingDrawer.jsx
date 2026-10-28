@@ -3,7 +3,7 @@ import { STATUS, TODAY } from '../../data/schedule.js'
 import { billableHours, formatHours, isBillable, sessionHours } from '../../lib/billing.js'
 import { longDayLabel } from '../../lib/dates.js'
 import {
-  checkDetails, checkTimes, conflictMessage, displayNames, findConflict, isLocked, slotLabel,
+  checkDetails, checkTimes, conflictMessage, displayNames, findConflict, isLocked, needsModerator, slotLabel,
 } from '../../lib/bookings.js'
 import { MS, prefersReducedMotion } from '../../motion/motion.js'
 import usePresence from '../../motion/usePresence.js'
@@ -14,7 +14,7 @@ import { useMatches } from '../../state/FilterContext.jsx'
 import { sessionsOn, useBookingTriggers, useSchedule } from '../../state/ScheduleContext.jsx'
 import { CloseIcon } from '../Icons.jsx'
 import { StatusDot } from '../StatusLegend.jsx'
-import { ModeratorPicker, NotifyField, TextField, TimeField } from './Fields.jsx'
+import { EmailFields, ModeratorPicker, TextField, TimeField, emailSummary, notifyFrom } from './Fields.jsx'
 import { useModerators } from '../../state/ModeratorContext.jsx'
 import { useParticipants } from '../../state/ParticipantContext.jsx'
 import { useRole } from '../../state/RoleContext.jsx'
@@ -22,6 +22,8 @@ import { MILES_SOURCE, formatMi, roundTrip, useOneWayMiles } from '../../lib/mil
 import { ExecutionSection, OneFormaLine } from './Execution.jsx'
 import { QA_STAGE_LABEL, bookingRef, isLinked } from '../../lib/oneforma/events.ts'
 import { checklistUrlFor } from '../../lib/oneforma/actions.ts'
+import { EMAIL_TEXT, EMAIL_TONE, TONE_CLASS, lastEmail } from '../../lib/oneforma/outboxStatus.ts'
+import { useSync } from '../../state/SyncContext.tsx'
 
 const PILL_CLASS = {
   completed: 'atlas-status-pill atlas-status-pill--completed',
@@ -32,6 +34,7 @@ const PILL_CLASS = {
 
 const TITLES = {
   edit: 'Edit booking',
+  assign: 'Assign moderator',
   reschedule: 'Reschedule',
   cancel: 'Cancel booking',
   'cancel-session': 'Cancel session',
@@ -186,6 +189,7 @@ const StatusPill = ({ status }) => (
 )
 
 function BookingSheet({ session, mode }) {
+  const { isAdmin } = useRole()
   // Session, recording and QA steps (they also apply to completed bookings).
   if (mode === 'interrupt' && session.status === 'insession') return <InterruptForm session={session} />
   if ((mode === 'recording' || mode === 'recording-failed') && session.status === 'completed') {
@@ -195,6 +199,8 @@ function BookingSheet({ session, mode }) {
   if (isLocked(session.status)) return <BookingDetails session={session} />
   if (mode === 'reschedule' && session.status !== 'booked') return <BookingDetails session={session} />
   if (mode === 'edit') return <EditForm session={session} />
+  // Only an Admin assigns or changes the moderator.
+  if (mode === 'assign' && isAdmin) return <AssignForm session={session} />
   if (mode === 'reschedule') return <RescheduleForm session={session} />
   if (mode === 'cancel') return <CancelForm session={session} />
   return <BookingDetails session={session} />
@@ -207,6 +213,7 @@ function BookingDetails({ session: s }) {
   const toast = useToast()
   const locked = isLocked(s.status)
   const { name, fullName } = useModerators()
+  const { isAdmin } = useRole()
 
   const start = () => {
     const live = sessions.find((o) => o.status === 'insession' && o.id !== s.id)
@@ -242,8 +249,13 @@ function BookingDetails({ session: s }) {
         <dl className="atlas-detail-grid">
           <Detail label="MODERATOR">
             <span className="atlas-detail-moderator" title={fullName(s.moderator)}>
-              {name(s.moderator) || '—'}
+              {s.moderator ? name(s.moderator) : needsModerator(s) ? <span className="atlas-needs-moderator">Needs moderator</span> : '—'}
               {s.moderator && <span className="atlas-detail-moderator-full">{fullName(s.moderator)}</span>}
+              {isAdmin && !locked && (
+                <button type="button" className="atlas-link atlas-detail-assign" onClick={() => openBooking(s.id, 'assign')}>
+                  {s.moderator ? 'Change' : 'Assign'}
+                </button>
+              )}
             </span>
           </Detail>
           <Detail label="BILLABLE HOURS">
@@ -264,6 +276,8 @@ function BookingDetails({ session: s }) {
         </dl>
 
         {s.status !== 'cancelled' && <ChecklistLink session={s} />}
+
+        <EmailsSection session={s} />
 
         <ExecutionSection session={s} />
 
@@ -400,6 +414,67 @@ function Activity({ session }) {
   )
 }
 
+// Last email per recipient and a way to send it again. Schedulers resend to the
+// participant; only an Admin resends to the moderator (they staff the booking).
+const RECIPIENTS = [
+  { to: 'participant', label: 'Participant' },
+  { to: 'moderator', label: 'Moderator', adminOnly: true },
+]
+
+const fallbackTemplate = (s) =>
+  s.status === 'cancelled' ? 'booking-cancelled' : s.rescheduledFrom ? 'booking-rescheduled' : 'booking-confirmed'
+
+function EmailsSection({ session: s }) {
+  const { entries } = useSync()
+  const { resendEmail } = useSchedule()
+  const { isAdmin, canBook } = useRole()
+  const toast = useToast()
+  if (!canBook) return null
+
+  const resend = (to, template) => {
+    const entry = resendEmail(s.id, to, template)
+    if (!entry) return
+    if (entry.status === 'rejected') toast(entry.message ?? 'That email couldn’t be queued.', 'error')
+    else toast(entry.status === 'built' ? `Dry run: resend to the ${to} built, not sent` : `Resend to the ${to} queued`)
+  }
+
+  return (
+    <section className="atlas-emails" aria-label="Emails">
+      <div className="atlas-eyebrow">EMAILS</div>
+      <ul className="atlas-emails-list">
+        {RECIPIENTS.map(({ to, label, adminOnly }) => {
+          const last = lastEmail(entries, s.id, to)
+          const reachable = to === 'participant' ? Boolean(s.email?.trim()) : Boolean(s.moderator)
+          const why = to === 'participant' ? 'No email on file' : 'No moderator yet'
+          return (
+            <li key={to} className="atlas-emails-row">
+              <span className="atlas-emails-who">{label}</span>
+              <span className="atlas-emails-state">
+                {!reachable ? <span className="atlas-detail-muted">{why}</span>
+                  : last ? <span className={TONE_CLASS[EMAIL_TONE[last.state]]}>{EMAIL_TEXT[last.state]} · {when(last.at)}</span>
+                    : <span className="atlas-detail-muted">None sent</span>}
+              </span>
+              {reachable && (!adminOnly || isAdmin) && (
+                <button type="button" className="atlas-link atlas-emails-resend" onClick={() => resend(to, last?.template ?? fallbackTemplate(s))}>
+                  Resend
+                </button>
+              )}
+            </li>
+          )
+        })}
+      </ul>
+    </section>
+  )
+}
+
+// What the moderator box can do on reschedule and cancel: only an Admin emails
+// the moderator, and only once one is assigned.
+function useModeratorBox(session) {
+  const { isAdmin } = useRole()
+  if (!isAdmin) return 'hidden'
+  return session.moderator ? 'on' : 'unassigned'
+}
+
 /* ---------- Edit ---------- */
 
 function useFormSheet(session) {
@@ -421,18 +496,17 @@ function useFormSheet(session) {
 }
 
 function EditForm({ session }) {
-  const { sessions, updateSession } = useSchedule()
-  const { name: moderatorName } = useModerators()
+  const { updateSession } = useSchedule()
   const { back, fail, saved, shakeKey } = useFormSheet(session)
+  // The moderator isn't edited here: an Admin assigns or changes it from the details.
   const [form, setForm] = useState({
     name: session.name, location: session.location ?? '', email: session.email ?? '',
-    phone: session.phone ?? '', protocol: session.protocol ?? '', notes: session.notes ?? '', moderator: session.moderator,
+    phone: session.phone ?? '', protocol: session.protocol ?? '', notes: session.notes ?? '',
   })
   const set = (patch) => setForm((f) => ({ ...f, ...patch }))
 
   const save = () => {
-    const clash = form.moderator !== session.moderator && findConflict(sessions, { ...session, moderator: form.moderator }, session.id)
-    const problem = checkDetails(form) ?? (clash && conflictMessage(clash, moderatorName))
+    const problem = checkDetails(form)
     if (problem) return fail(problem)
     updateSession(session.id, {
       ...displayNames(form.name),
@@ -441,7 +515,6 @@ function EditForm({ session }) {
       phone: form.phone.trim(),
       protocol: form.protocol.trim(),
       notes: form.notes.trim(),
-      moderator: form.moderator,
     })
     saved('details updated')
   }
@@ -456,10 +529,48 @@ function EditForm({ session }) {
       </div>
       <TextField label="PROTOCOL" value={form.protocol} placeholder="Standard" onChange={(v) => set({ protocol: v })} />
       <TextField label="NOTES" multiline value={form.notes} onChange={(v) => set({ notes: v })} />
+    </FormShell>
+  )
+}
+
+/* ---------- Assign moderator (Admin) ---------- */
+
+function AssignForm({ session }) {
+  const { sessions, assignModerator } = useSchedule()
+  const { label: moderatorLabel, name: moderatorName } = useModerators()
+  const { back, fail, saved, shakeKey } = useFormSheet(session)
+  const [moderator, setModerator] = useState(session.moderator ?? '')
+  const [emails, setEmails] = useState({ participant: false, moderator: true })
+  const busy = useMemo(() => new Set(sessions
+    .filter((s) => findConflict([s], { ...session, moderator: s.moderator }, session.id))
+    .map((s) => s.moderator)), [sessions, session])
+
+  const save = () => {
+    if (moderator === (session.moderator ?? '')) return fail(moderator ? 'Pick a different moderator.' : 'Pick a moderator.')
+    const clash = findConflict(sessions, { ...session, moderator }, session.id)
+    if (clash) return fail(conflictMessage(clash, moderatorName))
+    const notify = { participant: false, moderator: Boolean(moderator) && emails.moderator }
+    assignModerator(session.id, moderator, { notify })
+    saved(`${moderator ? `moderator ${moderatorLabel(moderator)}` : 'moderator unassigned'}${emailSummary(notify)}`)
+  }
+
+  return (
+    <FormShell session={session} mode="assign" onBack={back} onSave={save} saveLabel={session.moderator ? 'Change moderator' : 'Assign'} shakeKey={shakeKey}>
+      <div className="atlas-sheet-current">
+        <span className="atlas-eyebrow">CURRENTLY</span>
+        <span className="atlas-sheet-current-slot">{moderatorLabel(session.moderator)}</span>
+      </div>
       <div className="atlas-field">
         <span className="atlas-eyebrow">MODERATOR</span>
-        <ModeratorPicker value={form.moderator} onChange={(moderator) => set({ moderator })} />
+        <ModeratorPicker optional value={moderator} busy={busy} onChange={setModerator} />
       </div>
+      <EmailFields
+        value={emails}
+        onChange={setEmails}
+        email={session.email}
+        moderator={moderator ? 'on' : 'unassigned'}
+        participantHidden
+      />
     </FormShell>
   )
 }
@@ -472,7 +583,8 @@ function RescheduleForm({ session }) {
   const { back, fail, saved, shakeKey } = useFormSheet(session)
   const [slot, setSlot] = useState({ date: session.date, start: session.start, end: session.end })
   const [reason, setReason] = useState('')
-  const [notify, setNotify] = useState(true)
+  const [emails, setEmails] = useState({ participant: true, moderator: true })
+  const moderatorBox = useModeratorBox(session)
   const linked = isLinked(session)
   const set = (patch) => setSlot((f) => ({ ...f, ...patch }))
 
@@ -483,8 +595,9 @@ function RescheduleForm({ session }) {
     const clash = findConflict(sessions, { ...slot, moderator: session.moderator }, session.id)
     const problem = checkTimes(slot) ?? (clash && conflictMessage(clash, moderatorName)) ?? (linked && !reason.trim() && 'Add a reason. OneForma records it with the change.')
     if (problem) return fail(problem)
+    const notify = notifyFrom(emails, { moderator: moderatorBox })
     rescheduleSession(session.id, slot, reason.trim(), { notify })
-    saved(`moved to ${slotLabel(slot)}${notify ? ' · email queued' : ''}`)
+    saved(`moved to ${slotLabel(slot)}${emailSummary(notify, session.email)}`)
   }
 
   return (
@@ -499,7 +612,7 @@ function RescheduleForm({ session }) {
         <TimeField label="END TIME" value={slot.end} onChange={(v) => set({ end: v })} />
       </div>
       <TextField label={linked ? 'REASON' : 'REASON (OPTIONAL)'} multiline value={reason} placeholder="e.g. Participant asked for a later slot" onChange={setReason} />
-      <NotifyField checked={notify} onChange={setNotify} email={session.email} />
+      <EmailFields value={emails} onChange={setEmails} email={session.email} moderator={moderatorBox} />
     </FormShell>
   )
 }
@@ -510,15 +623,17 @@ function CancelForm({ session }) {
   const { cancelSession } = useSchedule()
   const { back, fail, saved, shakeKey } = useFormSheet(session)
   const [reason, setReason] = useState('')
-  const [notify, setNotify] = useState(true)
+  const [emails, setEmails] = useState({ participant: true, moderator: true })
+  const moderatorBox = useModeratorBox(session)
   const live = session.status === 'insession'
   // OneForma needs a reason for every cancellation it receives.
   const required = isLinked(session)
 
   const confirm = () => {
     if (required && !reason.trim()) return fail('Add a reason. OneForma needs one for a cancellation.')
+    const notify = notifyFrom(emails, { moderator: moderatorBox })
     cancelSession(session.id, reason.trim(), { notify })
-    saved(`${live ? 'session cancelled' : 'cancelled'}${notify ? ' · email queued' : ''}`)
+    saved(`${live ? 'session cancelled' : 'cancelled'}${emailSummary(notify, session.email)}`)
   }
 
   return (
@@ -536,7 +651,7 @@ function CancelForm({ session }) {
         {live ? 'This session is in progress. It will be' : 'This booking will be'} marked <strong className="atlas-sheet-alert-strong">Cancelled</strong>. It stays on the calendar for reference and can’t be edited afterwards.
       </div>
       <TextField label={required ? 'REASON' : 'REASON (OPTIONAL)'} multiline value={reason} placeholder="e.g. Participant unavailable, moderator reassigned…" onChange={setReason} autoFocus />
-      <NotifyField checked={notify} onChange={setNotify} email={session.email} />
+      <EmailFields value={emails} onChange={setEmails} email={session.email} moderator={moderatorBox} />
     </FormShell>
   )
 }
@@ -658,7 +773,7 @@ function FormShell({ session, mode, onBack, onSave, saveLabel, backLabel = 'Back
 
 function DaySheet({ date }) {
   const { sessions } = useSchedule()
-  const { name: moderatorName } = useModerators()
+  const { label: moderatorLabel } = useModerators()
   const matches = useMatches()
   const triggers = useBookingTriggers()
   const list = sessionsOn(sessions, date).filter(matches)
@@ -673,7 +788,7 @@ function DaySheet({ date }) {
             <StatusDot status={s.status} pulse={s.status === 'insession'} />
             <div className="atlas-day-item-text">
               <span className="atlas-day-item-name">{s.name}</span>
-              <span className="atlas-day-item-meta">{s.start} – {s.end} · {moderatorName(s.moderator)}</span>
+              <span className="atlas-day-item-meta">{s.start} – {s.end} · {moderatorLabel(s.moderator)}</span>
             </div>
             <span className="atlas-eyebrow atlas-day-item-status">{STATUS[s.status].weekLabel}</span>
           </div>

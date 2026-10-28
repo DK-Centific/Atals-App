@@ -3,7 +3,7 @@ import { LogoIcon, PinIcon, CheckIcon } from '../components/Icons.jsx'
 import AccountMenu from '../components/AccountMenu.jsx'
 import { StatusDot } from '../components/StatusLegend.jsx'
 import { STATUS, TODAY, toMinutes } from '../data/schedule.js'
-import { firstName as shownName } from '../data/moderators.js'
+import { UNASSIGNED, firstName as shownName } from '../data/moderators.js'
 import { billableHours, formatHours } from '../lib/billing.js'
 import { useModerators } from '../state/ModeratorContext.jsx'
 import { addDays, longDayLabel } from '../lib/dates.js'
@@ -159,11 +159,11 @@ export default function ChecklistView() {
 
   const date = addDays(TODAY, DAYS.find((d) => d.id === day)?.offset ?? 0)
   const shown = useMemo(() => sessions
-    .filter((s) => s.date === date && (moderator === 'all' || s.moderator === moderator))
+    .filter((s) => s.date === date && (moderator === 'all' || (moderator === UNASSIGNED ? !s.moderator : s.moderator === moderator)))
     .sort((a, b) => toMinutes(a.start) - toMinutes(b.start)), [sessions, date, moderator])
   const open = shown.filter((s) => s.status !== 'cancelled')
   const done = open.filter((s) => s.confirmedAt).length
-  const whoName = moderator === 'all' ? 'All moderators' : isModerator ? 'Your sessions' : moderatorName(moderator)
+  const whoName = moderator === 'all' ? 'All moderators' : moderator === UNASSIGNED ? 'Unassigned' : isModerator ? 'Your sessions' : moderatorName(moderator)
   const billable = shown.reduce((h, s) => h + billableHours(s), 0)
 
   return (
@@ -200,6 +200,7 @@ export default function ChecklistView() {
               <span className="atlas-eyebrow">Moderator</span>
               <select className="atlas-input atlas-checklist-moderator-select" value={moderator} onChange={(e) => setModerator(e.target.value)}>
                 <option value="all">All moderators</option>
+                <option value={UNASSIGNED}>Unassigned</option>
                 {moderators.map((m) => <option key={m.email} value={m.email}>{shownName(m)} · {m.displayName}</option>)}
               </select>
             </label>

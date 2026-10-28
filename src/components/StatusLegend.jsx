@@ -1,5 +1,7 @@
 import { useMemo } from 'react'
 import { STATUS } from '../data/schedule.js'
+import { UNASSIGNED } from '../data/moderators.js'
+import { needsModerator } from '../lib/bookings.js'
 import { matches } from '../lib/filters.js'
 import CountUp from '../motion/CountUp.jsx'
 import { isPicked, useFilters } from '../state/FilterContext.jsx'
@@ -21,6 +23,12 @@ export default function StatusLegend({ statuses = Object.keys(STATUS), wide = fa
     return c
   }, [sessions, others, statuses])
   const total = statuses.reduce((n, k) => n + counts[k], 0)
+  // Live bookings an Admin still has to staff. Follows every pick but the moderator ones.
+  const unassigned = useMemo(() => {
+    const rest = picks.filter((p) => p.group !== 'moderator')
+    return sessions.filter((s) => needsModerator(s) && matches(rest, s)).length
+  }, [sessions, picks])
+  const unassignedOn = isPicked(picks, 'moderator', UNASSIGNED)
 
   return (
     <div className={`atlas-legend${wide ? ' atlas-legend--wide' : ''}`} role="group" aria-label="Filter by status">
@@ -45,6 +53,19 @@ export default function StatusLegend({ statuses = Object.keys(STATUS), wide = fa
           </button>
         )
       })}
+      {(unassigned > 0 || unassignedOn) && (
+        <button
+          type="button"
+          className={`atlas-legend-item atlas-legend-item--unassigned atlas-hit${unassignedOn ? ' is-focus-on' : ''}`}
+          aria-pressed={unassignedOn}
+          aria-label={`Needs moderator: ${unassigned}`}
+          title={unassignedOn ? 'Click again to clear' : 'Bookings an Admin still has to assign a moderator to'}
+          onClick={() => toggle('moderator', UNASSIGNED, 'legend')}
+        >
+          <span className="atlas-legend-unassigned-mark" aria-hidden="true" /> Needs moderator
+          <CountUp value={unassigned} className="atlas-legend-count" />
+        </button>
+      )}
     </div>
   )
 }
