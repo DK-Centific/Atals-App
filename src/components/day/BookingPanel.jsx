@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { TODAY } from '../../data/schedule.js'
 import { addDays, longDayLabel, weekOf, weekRangeLabel } from '../../lib/dates.js'
-import { checkDetails, checkTimes, conflictMessage, displayNames, findConflict } from '../../lib/bookings.js'
+import { activeBookingFor, checkDetails, checkTimes, conflictMessage, displayNames, findConflict, slotLabel } from '../../lib/bookings.js'
 import Collapse from '../../motion/Collapse.jsx'
 import useSlidingPill from '../../motion/useSlidingPill.js'
 import { useToast } from '../../motion/Toast.jsx'
@@ -87,7 +87,10 @@ export default function BookingPanel({ participant = null, onBooked = null }) {
 
   const book = () => {
     const clash = form.moderator && findConflict(sessions, form)
+    // One live booking per participant: reschedule that one rather than booking twice.
+    const already = activeBookingFor(sessions, form.participantId)
     const problem = checkTimes(form) ?? checkDetails(form) ?? (clash && conflictMessage(clash, moderatorName))
+      ?? (already && `${already.name} is already booked for ${slotLabel(already)}. Open that booking to reschedule it.`)
     if (problem) return fail(problem)
     const miles = bookingRouteMiles(queue.find((p) => p.id === form.participantId))
     const created = addSession({

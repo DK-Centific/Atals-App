@@ -51,6 +51,12 @@ export function checkTimes({ date, start, end }) {
 /** A live booking still waiting for an Admin to assign its moderator. */
 export const needsModerator = (s) => !s.moderator && (s.status === 'booked' || s.status === 'insession')
 
+/** The participant's live booking (in session, or booked for today or later), if any. */
+export const activeBookingFor = (sessions, participantId) =>
+  participantId
+    ? sessions.find((s) => s.participantId === participantId && (s.status === 'insession' || (s.status === 'booked' && s.date >= TODAY)))
+    : undefined
+
 // The first live booking for the same moderator that overlaps `slot` on the same day.
 // An unassigned slot can't clash.
 export function findConflict(sessions, slot, ignoreId) {

@@ -1,4 +1,5 @@
 import { seedModerator } from './moderators.js'
+import { READ_URL } from '../lib/oneforma/config.ts'
 
 // Seed data for the prototype. Everything here mirrors the Day, Week and Month
 // designs: one booked week (Oct 21 - Oct 27, 2024) with Thursday Oct 24 as "today".
@@ -11,7 +12,12 @@ export const STATUS = {
 }
 
 
-export const TODAY = '2024-10-24'
+/** Today in Pacific time (YYYY-MM-DD), what OneForma and the moderators work in. */
+const pacificToday = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Los_Angeles' }).format(new Date())
+
+// Real data (a read flow is set) uses the real date. The sample data (demo mode, or no
+// flows on localhost) keeps its fixed week, Thursday Oct 24 2024, so it always looks the same.
+export const TODAY = READ_URL ? pacificToday() : '2024-10-24'
 
 
 // moderator: the assigned moderator's email (one moderator per session).
