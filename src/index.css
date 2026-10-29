@@ -1890,6 +1890,10 @@ button:disabled::after { display: none; }
 
 /* Rail button with a count badge that pops when the count changes */
 .atlas-sync-rail { @apply relative; }
+/* Refresh: the arrow turns while the newest version loads. */
+.atlas-refresh-rail.is-busy svg { animation: atlas-refresh-spin 0.8s linear infinite; }
+@keyframes atlas-refresh-spin { to { rotate: 360deg; } }
+@media (prefers-reduced-motion: reduce) { .atlas-refresh-rail.is-busy svg { animation: none; } }
 .atlas-sync-rail-badge {
     @apply absolute top-1.5 right-1.5 min-w-[1.125rem] h-[1.125rem] px-1 rounded-full flex items-center justify-center text-[10px] font-bold text-white bg-[var(--status-cancelled)];
 }

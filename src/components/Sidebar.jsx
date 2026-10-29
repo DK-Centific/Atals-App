@@ -3,6 +3,7 @@ import {
   CalendarIcon, CalendarSquareIcon, DashboardIcon, LogoIcon, ParticipantsIcon, TeamsIcon,
 } from './Icons.jsx'
 import AccountMenu from './AccountMenu.jsx'
+import RefreshRailButton from './RefreshRailButton.jsx'
 import SyncRailButton from './sync/SyncRailButton.jsx'
 import useViewNavigate from '../motion/useViewNavigate.js'
 import { useRole } from '../state/RoleContext.jsx'
@@ -58,6 +59,7 @@ export default function Sidebar({ variant = 'default' }) {
       </nav>
 
       <div className="atlas-sidebar-footer">
+        <RefreshRailButton />
         <SyncRailButton />
         <AccountMenu />
       </div>
