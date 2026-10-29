@@ -71,6 +71,9 @@ export interface ParticipantRow extends RelationFields {
   active: boolean
   lat?: number | null
   lng?: number | null
+  /** The address's point from the US Census geocoder (the pull flow looks each address up once). */
+  geoLat?: number | null
+  geoLng?: number | null
 }
 
 /* ---------- Atlas's participant model ---------- */
