@@ -4,6 +4,7 @@ import {
 } from './Icons.jsx'
 import AccountMenu from './AccountMenu.jsx'
 import RefreshRailButton from './RefreshRailButton.jsx'
+import { VERSION } from '../version.js'
 import SyncRailButton from './sync/SyncRailButton.jsx'
 import useViewNavigate from '../motion/useViewNavigate.js'
 import { useRole } from '../state/RoleContext.jsx'
@@ -62,6 +63,7 @@ export default function Sidebar({ variant = 'default' }) {
         <RefreshRailButton />
         <SyncRailButton />
         <AccountMenu />
+        <span className="atlas-version atlas-sidebar-version" title={`Atlas ${VERSION}`}>v{VERSION}</span>
       </div>
     </aside>
   )

@@ -3,6 +3,7 @@ import { LogoIcon } from '../components/Icons.jsx'
 import { prefetchSalt } from '../lib/auth/api.ts'
 import { passwordProblem } from '../lib/auth/crypto.ts'
 import { useAuth } from '../state/AuthContext.tsx'
+import { VERSION } from '../version.js'
 
 // One screen for every way in: first-time setup (no accounts yet), sign-in, and
 // the forced new password after a temp one. Same card, so the step feels continuous.
@@ -151,6 +152,7 @@ export default function SignInView() {
         {local && (
           <p className="atlas-signin-local">Test mode: accounts live in this browser only until the sign-in flow is connected.</p>
         )}
+        <p className="atlas-version atlas-login-version">Atlas {VERSION}</p>
       </form>
     </main>
   )

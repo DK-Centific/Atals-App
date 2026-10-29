@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { VERSION } from '../version.js'
 
 // Rail button that loads the newest Atlas: refetches the page past the browser
 // cache, checks for a new service worker, then reloads. Sign-in and saved data stay.
@@ -17,7 +18,7 @@ export default function RefreshRailButton() {
       window.location.reload()
     }
   }
-  const label = 'Refresh Atlas (load the latest version)'
+  const label = `Refresh Atlas (on ${VERSION}; loads the latest version)`
   return (
     <button
       type="button"
