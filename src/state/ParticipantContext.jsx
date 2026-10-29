@@ -1,6 +1,8 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { TODAY } from '../data/schedule.js'
+import { milesFromHq } from '../lib/geo.js'
 import { fetchParticipants, readCache, usingSample, writeCache } from '../lib/oneforma/participants.ts'
+import { loadZipPoints, zipPoint } from '../lib/zipPoints.js'
 import { useToast } from '../motion/Toast.jsx'
 import { useSchedule } from './ScheduleContext.jsx'
 
@@ -11,6 +13,17 @@ import { useSchedule } from './ScheduleContext.jsx'
 const ParticipantContext = createContext(null)
 
 const STALE_MS = 60 * 1000
+
+// People with an address but no map point get their ZIP centre, so they show on
+// the map and sort by distance (marked as an estimate).
+function placeByZip(list) {
+  const placed = list.map((p) => {
+    if (p.lat != null && p.lng != null) return p
+    const c = zipPoint(p)
+    return c ? { ...p, lat: c.lat, lng: c.lng, pointSource: 'zip', distMi: milesFromHq(c) } : p
+  })
+  return placed.sort((a, b) => (a.distMi ?? Infinity) - (b.distMi ?? Infinity))
+}
 
 export function ParticipantProvider({ children }) {
   const cached = useRef(readCache()).current
@@ -46,8 +59,15 @@ export function ParticipantProvider({ children }) {
 
   const syncNow = useCallback(() => run(true), [run])
 
+  const [zipReady, setZipReady] = useState(false)
+  useEffect(() => { loadZipPoints().then(setZipReady) }, [])
+  const participants = useMemo(
+    () => (zipReady ? placeByZip(data?.participants ?? []) : data?.participants ?? []),
+    [data, zipReady],
+  )
+
   const value = useMemo(() => ({
-    participants: data?.participants ?? [],
+    participants,
     stats: data?.stats ?? null,
     fetchedAt: data?.fetchedAt ?? null,
     oneformaSync: data?.oneformaSync ?? null,
@@ -55,7 +75,7 @@ export function ParticipantProvider({ children }) {
     sync,
     syncNow,
     usingSample,
-  }), [data, sync, syncNow])
+  }), [data, participants, sync, syncNow])
   return <ParticipantContext.Provider value={value}>{children}</ParticipantContext.Provider>
 }
 

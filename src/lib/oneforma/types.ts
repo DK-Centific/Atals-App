@@ -43,6 +43,7 @@ export interface RelationFields {
   lastName?: string | null
   phoneNumber?: string | null
   address?: string | null
+  postalCode?: string | null
   role?: string | null
   locale?: string | null
   country?: string | null
@@ -80,6 +81,7 @@ export interface Participant {
   email: string | null
   phone: string | null
   address: string
+  postalCode: string | null
   city: string | null
   state: string | null
   locale: string | null
@@ -88,6 +90,8 @@ export interface Participant {
   active: boolean
   lat: number | null
   lng: number | null
+  /** 'zip' when lat/lng is the ZIP centre (an estimate), not OneForma's own point. */
+  pointSource?: 'oneforma' | 'zip' | null
   /** Miles from HQ, or null while the address has no map point. */
   distMi: number | null
 }

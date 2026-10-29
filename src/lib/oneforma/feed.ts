@@ -88,6 +88,7 @@ function toParticipant(r: ParticipantRow, coords: Coords): Participant {
     email: text(r.email),
     phone: text(r.phoneNumber),
     address: text(r.address) ?? [text(r.city), text(r.state)].filter(Boolean).join(', '),
+    postalCode: text(r.postalCode == null ? null : String(r.postalCode)),
     city: text(r.city),
     state: text(r.state),
     locale: text(r.locale),
@@ -95,6 +96,7 @@ function toParticipant(r: ParticipantRow, coords: Coords): Participant {
     active: r.active,
     lat: point?.lat ?? null,
     lng: point?.lng ?? null,
+    pointSource: point ? 'oneforma' : null,
     distMi: point ? milesFromHq(point) : null,
   }
 }
