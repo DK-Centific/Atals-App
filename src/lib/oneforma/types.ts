@@ -37,6 +37,8 @@ export interface RelationFields {
   jobId?: string | null
   status?: string | null
   email?: string | null
+  /** OneForma's display name; prefer it, since not every record has a first/last split. */
+  fullName?: string | null
   firstName?: string | null
   lastName?: string | null
   phoneNumber?: string | null
