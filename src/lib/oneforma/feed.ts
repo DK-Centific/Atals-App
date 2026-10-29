@@ -73,7 +73,11 @@ function toParticipant(r: ParticipantRow, coords: Coords): Participant {
   const point = Number.isFinite(r.lat) && Number.isFinite(r.lng)
     ? { lat: r.lat as number, lng: r.lng as number }
     : coords[r.userId] ?? null
-  const name = text(r.fullName) ?? [text(r.firstName), text(r.lastName)].filter(Boolean).join(' ')
+  // Verified first + last name first; OneForma's fullName is only the Tools name (often a
+  // username) where it couldn't verify the split, so it is the fallback.
+  const first = text(r.firstName)
+  const last = text(r.lastName)
+  const name = first && last ? `${first} ${last}` : text(r.fullName) ?? [first, last].filter(Boolean).join(' ')
   return {
     id: r.userId,
     userId: r.userId,
