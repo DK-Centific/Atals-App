@@ -7,7 +7,7 @@
 // app, and only map points (never ZIP centres or addresses) go to the router.
 
 import { useEffect, useMemo, useState } from 'react'
-import { ZIP_CENTROIDS } from '../data/zipCentroids.js'
+import { zipOf, zipPoint } from './zipPoints.js'
 import { HQ, milesBetween } from './geo.js'
 import { cachedTrip, routeBetween } from './routing.js'
 
@@ -23,19 +23,17 @@ export const MILES_SOURCE = {
 /** Estimates get an "approx." mark; a road route or an admin's number doesn't. */
 export const isApprox = (source) => source !== 'road' && source !== 'admin'
 
-const located = (p) => p && p.lat != null && p.lng != null
+// Only a participant's own map point counts as located: a ZIP centre placed for
+// the map is an estimate and never goes to the router.
+const located = (p) => p && p.lat != null && p.lng != null && p.pointSource !== 'zip'
 
-/** The participant's 5-digit ZIP, from the address text or its own field. */
-export function zipOf(p) {
-  const text = [p?.zip, p?.postalCode, p?.address].filter(Boolean).join(' ')
-  return text.match(/\b(\d{5})(?:-\d{4})?\s*$/)?.[1] ?? text.match(/\b(\d{5})(?:-\d{4})?\b/)?.[1] ?? null
-}
+export { zipOf }
 
 /** One-way estimate without any network call, or null. */
 function estimate(p) {
   if (located(p)) return { miles: milesBetween(HQ, p) * DETOUR, source: 'location' }
-  const c = ZIP_CENTROIDS[zipOf(p)]
-  if (c) return { miles: milesBetween(HQ, { lat: c[0], lng: c[1] }) * DETOUR, source: 'zip' }
+  const c = zipPoint(p)
+  if (c) return { miles: milesBetween(HQ, c) * DETOUR, source: 'zip' }
   return null
 }
 

@@ -769,7 +769,7 @@ button:disabled::after { display: none; }
     mask: url('./assets/centific-logo.png') center / contain no-repeat;
 }
 .atlas-sidebar-nav,
-.atlas-sidebar-footer { @apply flex flex-col gap-6; }
+.atlas-sidebar-footer { @apply flex flex-col items-center gap-6; }
 .atlas-sidebar-avatar {
     @apply w-10 h-10 rounded-full bg-cover;
     background-image: url('https://api.dicebear.com/7.x/avataaars/svg?seed=Atlas');
@@ -1431,7 +1431,6 @@ button:disabled::after { display: none; }
 .atlas-map-zoom-status-text { letter-spacing: 0.12em; }
 .atlas-map-zoom-status.is-on .atlas-map-zoom-status-text { color: var(--accent); }
 .atlas-map-zoom-controls { @apply absolute right-10 bottom-10 z-50 flex flex-col gap-2; }
-.atlas-map-zoom-gap { @apply h-4; }
 .atlas-map-zoom-btn {
     @apply w-12 h-12 rounded-xl flex items-center justify-center cursor-pointer text-[var(--text-primary)] bg-[var(--bg-surface)];
     box-shadow: var(--neu-flat-sm);
@@ -1496,10 +1495,25 @@ button:disabled::after { display: none; }
         @apply w-auto flex-row py-2 px-3 m-3 mb-0 rounded-3xl sticky z-[70];
         top: calc(0.75rem + env(safe-area-inset-top));
     }
-    .atlas-sidebar-brand { @apply flex-row; }
-    .atlas-sidebar-logo { @apply w-11 h-11; }
+    /* Top bar on phones: logo, pages and tools as one evenly spaced row of equal slots
+       that shrink with the screen, so Refresh, Sync and the avatar fit on a 320px phone. */
+    .atlas-sidebar-brand,
     .atlas-sidebar-nav,
-    .atlas-sidebar-footer { @apply flex-row gap-1; }
+    .atlas-sidebar-footer { display: contents; }
+    .atlas-sidebar-logo,
+    .atlas-sidebar .atlas-rail-item,
+    .atlas-sidebar-footer > .atlas-role {
+        flex: 1 1 0;
+        min-width: 0;
+        max-width: 2.75rem;
+        height: auto;
+        aspect-ratio: 1;
+        margin: 0;
+    }
+    .atlas-sidebar-logo .atlas-logo-mark { @apply w-[55%] h-[55%]; }
+    .atlas-sidebar .atlas-rail-item svg { @apply w-5 h-5; }
+    .atlas-sidebar-footer > .atlas-role .atlas-role-trigger { @apply w-8 h-8; }
+    .atlas-sidebar-version { @apply hidden; }
 
     .atlas-day-main,
     .atlas-week-main,
@@ -1890,6 +1904,19 @@ button:disabled::after { display: none; }
 
 /* Rail button with a count badge that pops when the count changes */
 .atlas-sync-rail { @apply relative; }
+/* Release number: at the foot of the side rail and on the sign-in page. */
+.atlas-version { @apply text-[10px] leading-tight text-center text-[var(--text-secondary)] tabular-nums select-text; }
+.atlas-sidebar-version { @apply -mt-3 opacity-70; }
+/* The avatar sits in the same 56px slot as the rail buttons, so every rail icon is
+   the same distance apart. */
+.atlas-sidebar-footer > .atlas-role { @apply w-14 h-14 flex items-center justify-center; }
+/* The avatar disc is larger than a rail icon; this keeps the visible gap above it the same as between icons. */
+@media (min-width: 640px) { .atlas-sidebar-footer > .atlas-role { @apply mt-2; } }
+.atlas-login-version { @apply mt-6 opacity-70; }
+/* Refresh: the arrow turns while the newest version loads. */
+.atlas-refresh-rail.is-busy svg { animation: atlas-refresh-spin 0.8s linear infinite; }
+@keyframes atlas-refresh-spin { to { rotate: 360deg; } }
+@media (prefers-reduced-motion: reduce) { .atlas-refresh-rail.is-busy svg { animation: none; } }
 .atlas-sync-rail-badge {
     @apply absolute top-1.5 right-1.5 min-w-[1.125rem] h-[1.125rem] px-1 rounded-full flex items-center justify-center text-[10px] font-bold text-white bg-[var(--status-cancelled)];
 }
@@ -2036,8 +2063,9 @@ button:disabled::after { display: none; }
 .atlas-checklist-intro { @apply flex flex-col gap-1 pt-2; }
 .atlas-checklist-title { @apply text-4xl leading-tight; font-family: var(--font-serif); }
 .atlas-checklist-sub { @apply text-sm text-[var(--text-secondary)]; }
-.atlas-checklist-moderator { @apply flex items-center gap-3; }
-.atlas-checklist-moderator-select { @apply w-auto min-w-[12rem] py-2 cursor-pointer; color-scheme: dark; }
+.atlas-checklist-moderator { @apply flex items-center gap-3 min-w-0 max-w-full; }
+/* Long moderator names would size the picker past the screen; it stays within the row. */
+.atlas-checklist-moderator-select { @apply w-auto min-w-[12rem] max-w-full py-2 cursor-pointer truncate; color-scheme: dark; }
 .atlas-checklist-controls { @apply flex flex-wrap gap-3; }
 .atlas-checklist-segment .atlas-view-tab { @apply text-xs font-semibold tracking-wider uppercase px-4 py-2; }
 .atlas-checklist-list { @apply flex flex-col gap-4; }

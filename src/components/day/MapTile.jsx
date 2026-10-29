@@ -1,7 +1,5 @@
 import { useMemo } from 'react'
-import { ZIP_CENTROIDS } from '../../data/zipCentroids.js'
 import { HQ, milesBetween } from '../../lib/geo.js'
-import { zipOf } from '../../lib/mileage.js'
 import useMapQueue from '../map/useMapQueue.js'
 
 // The way into the map from the Schedule: a small preview of HQ and the people
@@ -19,12 +17,8 @@ const W = 320
 const H = 120
 const rad = (d) => (d * Math.PI) / 180
 
-// A map point, or the ZIP centre when there is only an address (marked approx).
-function pointOf(p) {
-  if (p.lat != null && p.lng != null) return { lat: p.lat, lng: p.lng }
-  const c = ZIP_CENTROIDS[zipOf(p)]
-  return c ? { lat: c[0], lng: c[1] } : null
-}
+// A map point (the participant's own, or their ZIP centre, see ParticipantContext).
+const pointOf = (p) => (p.lat != null && p.lng != null ? { lat: p.lat, lng: p.lng } : null)
 
 export default function MapTile({ onOpen }) {
   const { shown } = useMapQueue()

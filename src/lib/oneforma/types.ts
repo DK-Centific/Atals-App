@@ -37,12 +37,13 @@ export interface RelationFields {
   jobId?: string | null
   status?: string | null
   email?: string | null
-  /** OneForma's display name (Prod sends it for everyone; first/last only where verified). */
+  /** OneForma's display name; prefer it, since not every record has a first/last split. */
   fullName?: string | null
   firstName?: string | null
   lastName?: string | null
   phoneNumber?: string | null
   address?: string | null
+  postalCode?: string | null
   role?: string | null
   locale?: string | null
   country?: string | null
@@ -80,6 +81,7 @@ export interface Participant {
   email: string | null
   phone: string | null
   address: string
+  postalCode: string | null
   city: string | null
   state: string | null
   locale: string | null
@@ -88,6 +90,8 @@ export interface Participant {
   active: boolean
   lat: number | null
   lng: number | null
+  /** 'zip' when lat/lng is the ZIP centre (an estimate), not OneForma's own point. */
+  pointSource?: 'oneforma' | 'zip' | null
   /** Miles from HQ, or null while the address has no map point. */
   distMi: number | null
 }

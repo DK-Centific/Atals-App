@@ -2,13 +2,13 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { TODAY } from '../../data/schedule.js'
 import { addDays, longDayLabel, weekOf, weekRangeLabel } from '../../lib/dates.js'
-import { activeBookingFor, checkDetails, checkTimes, conflictMessage, displayNames, findConflict, slotLabel } from '../../lib/bookings.js'
+import { activeBookingFor, checkDetails, checkTimes, conflictMessage, displayNames, findConflict, slotLabel, withEnd, withStart } from '../../lib/bookings.js'
 import Collapse from '../../motion/Collapse.jsx'
 import useSlidingPill from '../../motion/useSlidingPill.js'
 import { useToast } from '../../motion/Toast.jsx'
 import { useSchedule } from '../../state/ScheduleContext.jsx'
-import { useQueue } from '../../state/ParticipantContext.jsx'
-import { formatMiles } from '../../lib/geo.js'
+import { QUEUE_RADIUS_MI, useQueue } from '../../state/ParticipantContext.jsx'
+import { participantMiles } from '../../lib/geo.js'
 import { bookingRouteMiles } from '../../lib/mileage.js'
 import { PlusIcon } from '../Icons.jsx'
 import QueueSyncStatus from '../sync/QueueSyncStatus.jsx'
@@ -164,8 +164,8 @@ export default function BookingPanel({ participant = null, onBooked = null }) {
       </div>
 
       <div key={shakeKey} className={`atlas-booking-times${shakeKey ? ' atlas-shake' : ''}`}>
-        <TimeField label="START TIME" value={form.start} onChange={(v) => set({ start: v })} />
-        <TimeField label="END TIME" value={form.end} onChange={(v) => set({ end: v })} />
+        <TimeField label="START TIME" value={form.start} onChange={(v) => set(withStart(v))} />
+        <TimeField label="END TIME" value={form.end} onChange={(v) => set(withEnd(v))} />
       </div>
 
       <div className="atlas-booking-participant">
@@ -180,12 +180,12 @@ export default function BookingPanel({ participant = null, onBooked = null }) {
               value={form.participantId}
               onChange={(e) => pickParticipant(e.target.value)}
             >
-              <option value="">Pick an endorsed participant ({openQueue.length} open)</option>
+              <option value="">Pick an endorsed participant ({openQueue.length} open within {QUEUE_RADIUS_MI} mi)</option>
               {form.participantId && !openQueue.some((p) => p.id === form.participantId) && (
                 <option value={form.participantId}>{form.name}</option>
               )}
               {openQueue.map((p) => (
-                <option key={p.id} value={p.id}>{p.name} · {formatMiles(p.distMi)} · {p.id}</option>
+                <option key={p.id} value={p.id}>{p.name} · {participantMiles(p)} · {p.id}</option>
               ))}
             </select>
           </label>

@@ -5,7 +5,7 @@ import 'maplibre-gl/dist/maplibre-gl.css'
 import { TODAY } from '../../data/schedule.js'
 import { firstName } from '../../data/moderators.js'
 import { useModerators } from '../../state/ModeratorContext.jsx'
-import { HQ, boxAround, formatMiles } from '../../lib/geo.js'
+import { HQ, boxAround, participantMiles } from '../../lib/geo.js'
 import { etaFrom, formatDrive, routeBetween } from '../../lib/routing.js'
 import { longDayLabel } from '../../lib/dates.js'
 import { prefersReducedMotion } from '../../motion/motion.js'
@@ -473,7 +473,6 @@ function LiveMap({ onClose }) {
         <button type="button" className="atlas-map-zoom-btn" aria-label="Zoom out" onClick={() => zoomBy(-1)}>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="5" y1="12" x2="19" y2="12" /></svg>
         </button>
-        <div className="atlas-map-zoom-gap" />
         <button type="button" className="atlas-map-zoom-btn" aria-label="Back to Centific HQ" title="Back to Centific HQ" onClick={recenter}>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polygon points="3 11 22 2 13 21 11 13 3 11" /></svg>
         </button>
@@ -491,7 +490,7 @@ function ParticipantDot({ participant: p, revealed, selected, onPick }) {
       tabIndex={revealed ? 0 : -1}
       aria-hidden={!revealed}
       aria-pressed={selected}
-      aria-label={`${p.name}, ${STATUS_TEXT[p.status]}${when ? `, ${when}` : ''}, ${formatMiles(p.distMi)} from HQ`}
+      aria-label={`${p.name}, ${STATUS_TEXT[p.status]}${when ? `, ${when}` : ''}, ${participantMiles(p)} from HQ`}
       onClick={(e) => { e.stopPropagation(); onPick() }}
     >
       <span className="atlas-map-dot-core" />
@@ -621,7 +620,7 @@ function QueuePanel({ shown, total, onClose }) {
                   <span className="atlas-queue-name">{p.name}</span>
                   <span className="atlas-queue-meta">{p.address.split(',')[0]} · {STATUS_TEXT[p.status]}</span>
                 </span>
-                <span className="atlas-queue-dist">{formatMiles(p.distMi)}</span>
+                <span className="atlas-queue-dist">{participantMiles(p)}</span>
               </button>
             </li>
           ))}
@@ -713,7 +712,7 @@ function InfoTile({ participant: p, trip, onRoute, onDismiss, onBook }) {
         <div className="atlas-map-info-grid">
           <div>
             <div className="atlas-eyebrow atlas-map-detail-label">FROM HQ</div>
-            <div className="atlas-map-detail-value">{formatMiles(p.distMi)}</div>
+            <div className="atlas-map-detail-value">{participantMiles(p)}</div>
           </div>
           <div className="atlas-map-detail-assigned">
             <div className="atlas-eyebrow atlas-map-detail-label">{s ? 'BOOKING' : 'ENDORSED'}</div>
