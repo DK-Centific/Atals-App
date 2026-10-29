@@ -7,7 +7,7 @@ import Collapse from '../../motion/Collapse.jsx'
 import useSlidingPill from '../../motion/useSlidingPill.js'
 import { useToast } from '../../motion/Toast.jsx'
 import { useSchedule } from '../../state/ScheduleContext.jsx'
-import { useQueue } from '../../state/ParticipantContext.jsx'
+import { QUEUE_RADIUS_MI, useQueue } from '../../state/ParticipantContext.jsx'
 import { participantMiles } from '../../lib/geo.js'
 import { bookingRouteMiles } from '../../lib/mileage.js'
 import { PlusIcon } from '../Icons.jsx'
@@ -180,7 +180,7 @@ export default function BookingPanel({ participant = null, onBooked = null }) {
               value={form.participantId}
               onChange={(e) => pickParticipant(e.target.value)}
             >
-              <option value="">Pick an endorsed participant ({openQueue.length} open)</option>
+              <option value="">Pick an endorsed participant ({openQueue.length} open within {QUEUE_RADIUS_MI} mi)</option>
               {form.participantId && !openQueue.some((p) => p.id === form.participantId) && (
                 <option value={form.participantId}>{form.name}</option>
               )}

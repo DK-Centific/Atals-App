@@ -97,11 +97,18 @@ export function bookingState(sessions, participantId) {
 }
 
 // The queue: active participants with each one's booking state attached.
+// Only the Seattle area is bookable: people within this many miles of HQ (by
+// their map point or ZIP centre). Anyone already booked stays, wherever they are.
+export const QUEUE_RADIUS_MI = 40
+
 export function useQueue() {
   const { participants } = useParticipants()
   const { sessions } = useSchedule()
   return useMemo(
-    () => participants.filter((p) => p.active).map((p) => ({ ...p, ...bookingState(sessions, p.id) })),
+    () => participants
+      .filter((p) => p.active)
+      .map((p) => ({ ...p, ...bookingState(sessions, p.id) }))
+      .filter((p) => p.status !== 'open' || (p.distMi != null && p.distMi <= QUEUE_RADIUS_MI)),
     [participants, sessions],
   )
 }
