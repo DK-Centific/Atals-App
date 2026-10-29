@@ -3,7 +3,7 @@ import { STATUS, TODAY } from '../../data/schedule.js'
 import { billableHours, formatHours, isBillable, sessionHours } from '../../lib/billing.js'
 import { longDayLabel } from '../../lib/dates.js'
 import {
-  checkDetails, checkTimes, conflictMessage, displayNames, findConflict, isLocked, needsModerator, slotLabel,
+  checkDetails, checkTimes, conflictMessage, displayNames, findConflict, isLocked, needsModerator, slotLabel, withEnd, withStart,
 } from '../../lib/bookings.js'
 import { MS, prefersReducedMotion } from '../../motion/motion.js'
 import usePresence from '../../motion/usePresence.js'
@@ -673,8 +673,8 @@ function RescheduleForm({ session }) {
       </div>
       <TextField label="NEW DATE" type="date" value={slot.date} onChange={(v) => set({ date: v })} autoFocus />
       <div className="atlas-booking-times atlas-booking-times--sheet">
-        <TimeField label="START TIME" value={slot.start} onChange={(v) => set({ start: v })} />
-        <TimeField label="END TIME" value={slot.end} onChange={(v) => set({ end: v })} />
+        <TimeField label="START TIME" value={slot.start} onChange={(v) => set(withStart(v))} />
+        <TimeField label="END TIME" value={slot.end} onChange={(v) => set(withEnd(v))} />
       </div>
       <TextField label={linked ? 'REASON' : 'REASON (OPTIONAL)'} multiline value={reason} placeholder="e.g. Participant asked for a later slot" onChange={setReason} />
     </FormShell>

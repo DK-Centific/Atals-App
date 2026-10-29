@@ -34,6 +34,14 @@ export function checkDetails({ name, email }) {
   return null
 }
 
+// Sessions run 2 hours: picking a start sets the end 2 hours later, and picking
+// an end sets the start 2 hours earlier (kept inside the same day).
+const SESSION_MINUTES = 120
+const hhmm = (m) => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`
+const shifted = (time, by) => hhmm(Math.min(23 * 60 + 59, Math.max(0, toMinutes(time) + by)))
+export const withStart = (start) => (start ? { start, end: shifted(start, SESSION_MINUTES) } : { start })
+export const withEnd = (end) => (end ? { end, start: shifted(end, -SESSION_MINUTES) } : { end })
+
 // Matches the Week timeline (08:00 - 21:00 rows).
 const DAY_START = '08:00'
 const DAY_END = '22:00'

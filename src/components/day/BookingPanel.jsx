@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { TODAY } from '../../data/schedule.js'
 import { addDays, longDayLabel, weekOf, weekRangeLabel } from '../../lib/dates.js'
-import { activeBookingFor, checkDetails, checkTimes, conflictMessage, displayNames, findConflict, slotLabel } from '../../lib/bookings.js'
+import { activeBookingFor, checkDetails, checkTimes, conflictMessage, displayNames, findConflict, slotLabel, withEnd, withStart } from '../../lib/bookings.js'
 import Collapse from '../../motion/Collapse.jsx'
 import useSlidingPill from '../../motion/useSlidingPill.js'
 import { useToast } from '../../motion/Toast.jsx'
@@ -164,8 +164,8 @@ export default function BookingPanel({ participant = null, onBooked = null }) {
       </div>
 
       <div key={shakeKey} className={`atlas-booking-times${shakeKey ? ' atlas-shake' : ''}`}>
-        <TimeField label="START TIME" value={form.start} onChange={(v) => set({ start: v })} />
-        <TimeField label="END TIME" value={form.end} onChange={(v) => set({ end: v })} />
+        <TimeField label="START TIME" value={form.start} onChange={(v) => set(withStart(v))} />
+        <TimeField label="END TIME" value={form.end} onChange={(v) => set(withEnd(v))} />
       </div>
 
       <div className="atlas-booking-participant">
