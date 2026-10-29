@@ -473,7 +473,6 @@ function LiveMap({ onClose }) {
         <button type="button" className="atlas-map-zoom-btn" aria-label="Zoom out" onClick={() => zoomBy(-1)}>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="5" y1="12" x2="19" y2="12" /></svg>
         </button>
-        <div className="atlas-map-zoom-gap" />
         <button type="button" className="atlas-map-zoom-btn" aria-label="Back to Centific HQ" title="Back to Centific HQ" onClick={recenter}>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polygon points="3 11 22 2 13 21 11 13 3 11" /></svg>
         </button>

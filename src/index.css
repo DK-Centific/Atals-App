@@ -1431,7 +1431,6 @@ button:disabled::after { display: none; }
 .atlas-map-zoom-status-text { letter-spacing: 0.12em; }
 .atlas-map-zoom-status.is-on .atlas-map-zoom-status-text { color: var(--accent); }
 .atlas-map-zoom-controls { @apply absolute right-10 bottom-10 z-50 flex flex-col gap-2; }
-.atlas-map-zoom-gap { @apply h-4; }
 .atlas-map-zoom-btn {
     @apply w-12 h-12 rounded-xl flex items-center justify-center cursor-pointer text-[var(--text-primary)] bg-[var(--bg-surface)];
     box-shadow: var(--neu-flat-sm);
@@ -1893,7 +1892,10 @@ button:disabled::after { display: none; }
 .atlas-sync-rail { @apply relative; }
 /* Release number: at the foot of the side rail and on the sign-in page. */
 .atlas-version { @apply text-[10px] leading-tight text-center text-[var(--text-secondary)] tabular-nums select-text; }
-.atlas-sidebar-version { @apply -mt-4 opacity-70; }
+.atlas-sidebar-version { @apply -mt-3 opacity-70; }
+/* The avatar sits in the same 56px slot as the rail buttons, so every rail icon is
+   the same distance apart. */
+.atlas-sidebar-footer > .atlas-role { @apply w-14 h-14 flex items-center justify-center; }
 .atlas-login-version { @apply mt-6 opacity-70; }
 /* Refresh: the arrow turns while the newest version loads. */
 .atlas-refresh-rail.is-busy svg { animation: atlas-refresh-spin 0.8s linear infinite; }
