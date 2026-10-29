@@ -9,6 +9,16 @@ import './index.css'
 
 installFit()
 
+// GitHub Pages answers a direct link (e.g. /Atals-App/day/map) with 404.html, which keeps
+// the path and sends the browser to this build's root; put the path back before routing.
+try {
+  const to = window.sessionStorage.getItem('atlas_redirect')
+  if (to) {
+    window.sessionStorage.removeItem('atlas_redirect')
+    window.history.replaceState(null, '', to)
+  }
+} catch { /* storage off: the root page opens instead */ }
+
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     {/* basename follows the build's base path, e.g. /Atals-App/ on GitHub Pages. */}

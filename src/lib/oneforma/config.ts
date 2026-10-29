@@ -6,6 +6,7 @@
 //   VITE_ATLAS_ACTION_URL=...      Power Automate "Atlas action" flow (POST). Unset = dry run.
 //   VITE_ATLAS_READ_URL=...        Power Automate read flow (POST with the session token). Unset = sample data.
 //   VITE_ATLAS_AUTH_URL=...        Power Automate Auth flow (sign-in and users). Unset = users kept in this browser.
+//   VITE_ATLAS_AUTH_FAST_URL=...   Optional faster flow for salt + signin only.
 //   VITE_CHECKLIST_URL=...         Checklist app address; each booking links to it with ?booking=<id>.
 
 export type OneFormaEnv = 'uat' | 'prod'
@@ -45,12 +46,18 @@ export function setDemo(on: boolean): void {
   window.location.reload()
 }
 
-/** This mode's storage key, so demo bookings never mix with the real ones. */
-export const storageKey = (base: string): string => (DEMO ? `${base}_demo` : base)
+/**
+ * This build's storage key. Prod and UAT are served from the same site (UAT under /uat/),
+ * so they share this browser's storage: Prod gets its own keys, so a UAT change waiting
+ * to be sent can never go out through the Prod flows. Demo data gets its own keys too.
+ */
+export const storageKey = (base: string): string => `${base}${env === 'prod' ? '_prod' : ''}${DEMO ? '_demo' : ''}`
 
 export const ACTION_URL: string | undefined = DEMO ? undefined : import.meta.env.VITE_ATLAS_ACTION_URL || undefined
 export const READ_URL: string | undefined = DEMO ? undefined : import.meta.env.VITE_ATLAS_READ_URL || undefined
 export const AUTH_URL: string | undefined = import.meta.env.VITE_ATLAS_AUTH_URL || undefined
+/** Optional lighter Auth flow for op salt and signin only (faster sign-in); the rest uses AUTH_URL. */
+export const AUTH_FAST_URL: string | undefined = import.meta.env.VITE_ATLAS_AUTH_FAST_URL || undefined
 export const CHECKLIST_URL: string | undefined = import.meta.env.VITE_CHECKLIST_URL || undefined
 
 /** Dry run: actions are built and checked but never leave the browser. */

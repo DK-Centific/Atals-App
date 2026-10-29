@@ -1,7 +1,7 @@
 // Talks to the Power Automate Auth flow (VITE_ATLAS_AUTH_URL). Without it the
 // browser-kept stand-in answers instead, with the same contract.
 
-import { AUTH_URL } from '../oneforma/config.ts'
+import { AUTH_FAST_URL, AUTH_URL } from '../oneforma/config.ts'
 import { hashPassword, saltedHash } from './crypto.ts'
 import { localAuth } from './localFlow.ts'
 import { ensureSeed } from './seed.ts'
@@ -25,7 +25,9 @@ async function call(req: AuthRequest): Promise<AuthReply> {
   const ctrl = new AbortController()
   const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS)
   try {
-    const res = await fetch(AUTH_URL, {
+    // salt and signin may go to the lighter Auth flow; everything else to the main one.
+    const url = AUTH_FAST_URL && (req.op === 'salt' || req.op === 'signin') ? AUTH_FAST_URL : AUTH_URL
+    const res = await fetch(url, {
       method: 'POST',
       // text/plain: the flows' HTTP trigger answers no CORS preflight, which
       // application/json would trigger; it also keeps timestamps exactly as sent.

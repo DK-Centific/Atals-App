@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Atlas</title>
+<style>:root { color-scheme: dark; } body { margin: 0; background: #1A1C1E; }</style>
+<script>
+  // One 404 page for both builds on GitHub Pages: Prod at /Atals-App/, UAT at /Atals-App/uat/.
+  // Keep the requested path, then open the right build; its main.jsx puts the path back.
+  (function () {
+    var p = location.pathname
+    var base = /^\/Atals-App\/uat(\/|$)/.test(p) ? '/Atals-App/uat/' : '/Atals-App/'
+    try { sessionStorage.setItem('atlas_redirect', p + location.search + location.hash) } catch (e) {}
+    location.replace(base)
+  })()
+</script>
+</head>
+<body></body>
+</html>

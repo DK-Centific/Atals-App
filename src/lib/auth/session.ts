@@ -3,12 +3,12 @@
 // data, signing out also clears the cached bookings and participants, so no phone
 // number stays behind. (The outbox stays: sign-out waits until it is sent.)
 
-import { READ_URL } from '../oneforma/config.ts'
+import { READ_URL, storageKey } from '../oneforma/config.ts'
 import type { AuthSession } from './types.ts'
 
 const KEY = 'atlas_session_v1'
 /** Browser copies that may hold participant details; cleared on sign-out. */
-const PERSONAL_KEYS = ['atlas_schedule_v3', 'atlas_schedule_v4', 'atlas_of_cache_v2']
+const PERSONAL_KEYS = ['atlas_schedule_v3', 'atlas_schedule_v4', 'atlas_of_cache_v2'].map(storageKey)
 
 let current: AuthSession | null = readSaved()
 
