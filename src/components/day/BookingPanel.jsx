@@ -8,7 +8,7 @@ import useSlidingPill from '../../motion/useSlidingPill.js'
 import { useToast } from '../../motion/Toast.jsx'
 import { useSchedule } from '../../state/ScheduleContext.jsx'
 import { useQueue } from '../../state/ParticipantContext.jsx'
-import { formatMiles } from '../../lib/geo.js'
+import { participantMiles } from '../../lib/geo.js'
 import { bookingRouteMiles } from '../../lib/mileage.js'
 import { PlusIcon } from '../Icons.jsx'
 import QueueSyncStatus from '../sync/QueueSyncStatus.jsx'
@@ -185,7 +185,7 @@ export default function BookingPanel({ participant = null, onBooked = null }) {
                 <option value={form.participantId}>{form.name}</option>
               )}
               {openQueue.map((p) => (
-                <option key={p.id} value={p.id}>{p.name} · {formatMiles(p.distMi)} · {p.id}</option>
+                <option key={p.id} value={p.id}>{p.name} · {participantMiles(p)} · {p.id}</option>
               ))}
             </select>
           </label>

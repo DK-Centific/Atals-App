@@ -25,6 +25,10 @@ export const formatMiles = (mi) => {
   return mi < 0.1 ? 'at HQ' : `${mi < 10 ? mi.toFixed(1) : Math.round(mi)} mi`
 }
 
+/** A participant's distance from HQ; "about" when it comes from their ZIP code centre. */
+export const participantMiles = (p) =>
+  `${p?.pointSource === 'zip' && p?.distMi != null ? 'about ' : ''}${formatMiles(p?.distMi)}`
+
 // A box `miles` out from a point on every side, as [[west, south], [east, north]].
 export function boxAround(p, miles) {
   const dLat = miles / 69
