@@ -16,6 +16,7 @@ import { MAP_LAYERS, useMap } from '../../state/MapContext.jsx'
 import { useParticipants, useQueue } from '../../state/ParticipantContext.jsx'
 import { useRole } from '../../state/RoleContext.jsx'
 import { useSchedule } from '../../state/ScheduleContext.jsx'
+import { useAuth } from '../../state/AuthContext.tsx'
 import FilterBar from '../filter/FilterBar.jsx'
 import FilterMenu from '../filter/FilterMenu.jsx'
 import { DateRangePicker, MapDateBar } from './MapDateRange.jsx'
@@ -260,10 +261,10 @@ function LiveMap({ onClose }) {
   const containerRef = useRef(null)
   const { map, baseZoom, tiles } = useLibreMap(containerRef)
   const revealMiles = useRevealMiles(map, baseZoom)
-  const queue = useQueue()
+  const { layers: mapLayers, focus, focusParticipant, selected, setSelected, clearFocus } = useMap()
+  const queue = useQueue({ includeFar: mapLayers.far })
   const { sessions, removeSession, openBooking, setNote } = useSchedule()
   const { name: moderatorName } = useModerators()
-  const { focus, focusParticipant, selected, setSelected, clearFocus } = useMap()
   const toast = useToast()
   // { to, label, trip: null | { miles, minutes, eta, estimated, reason } }
   const [route, setRoute] = useState(null)
@@ -684,6 +685,65 @@ function TripPanel({ trip }) {
   )
 }
 
+// The participant's address, and for Admins and Schedulers a way to correct it.
+// A correction is saved in Atlas and wins over every later OneForma pull.
+function AddressFix({ participant: p }) {
+  const { canBook } = useRole()
+  const { correctAddress } = useParticipants()
+  const { user } = useAuth()
+  const toast = useToast()
+  const [form, setForm] = useState(null)
+  const [saving, setSaving] = useState(false)
+
+  const save = async (fix) => {
+    setSaving(true)
+    const result = await correctAddress(p, fix, user?.email ?? null)
+    setSaving(false)
+    if (!result.ok) { toast(result.message ?? 'The address wasn’t saved.', 'error'); return }
+    setForm(null)
+    const back = !fix.address?.trim() && !fix.postalCode?.trim()
+    toast(result.sent ? (back ? 'Back to the OneForma address' : 'Address corrected') : 'Dry run: address changed in this browser only')
+  }
+
+  if (form) {
+    return (
+      <form className="atlas-address-fix" onSubmit={(e) => { e.preventDefault(); save(form) }}>
+        <label className="atlas-field">
+          <span className="atlas-eyebrow">ADDRESS</span>
+          <input className="atlas-input" value={form.address} autoFocus onChange={(e) => setForm({ ...form, address: e.target.value })} />
+        </label>
+        <label className="atlas-field atlas-address-fix-zip">
+          <span className="atlas-eyebrow">ZIP</span>
+          <input className="atlas-input" value={form.postalCode} inputMode="numeric" maxLength={10} onChange={(e) => setForm({ ...form, postalCode: e.target.value })} />
+        </label>
+        <div className="atlas-address-fix-actions">
+          <button type="submit" className="atlas-btn-primary atlas-btn-primary--compact" disabled={saving || (!form.address.trim() && !form.postalCode.trim())}>{saving ? 'Saving…' : 'Save address'}</button>
+          <button type="button" className="atlas-link" onClick={() => setForm(null)} disabled={saving}>Cancel</button>
+        </div>
+      </form>
+    )
+  }
+
+  return (
+    <div className="atlas-map-info-address">
+      <span>{p.address || 'No address'}{p.postalCode && !p.address?.includes(p.postalCode) ? ` ${p.postalCode}` : ''}</span>
+      {p.corrected && (
+        <span className="atlas-address-fix-note" title={`OneForma has: ${p.corrected.ofAddress || 'no address'}${p.corrected.ofPostalCode ? ` ${p.corrected.ofPostalCode}` : ''}`}>
+          Corrected in Atlas{p.corrected.by ? ` by ${p.corrected.by}` : ''}
+        </span>
+      )}
+      {canBook && (
+        <span className="atlas-address-fix-links">
+          <button type="button" className="atlas-link" onClick={() => setForm({ address: p.address ?? '', postalCode: p.postalCode ?? '' })}>Fix address</button>
+          {p.corrected && (
+            <button type="button" className="atlas-link" disabled={saving} onClick={() => save({ address: '', postalCode: '' })}>Use OneForma’s</button>
+          )}
+        </span>
+      )}
+    </div>
+  )
+}
+
 // Info and actions for the dot that was clicked.
 function InfoTile({ participant: p, trip, onRoute, onDismiss, onBook }) {
   const { openBooking, triggerRef } = useSchedule()
@@ -708,7 +768,7 @@ function InfoTile({ participant: p, trip, onRoute, onDismiss, onBook }) {
       </div>
 
       <div className="atlas-map-info-body atlas-well">
-        <div className="atlas-map-info-address">{p.address}</div>
+        <AddressFix participant={p} />
         <div className="atlas-map-info-grid">
           <div>
             <div className="atlas-eyebrow atlas-map-detail-label">FROM HQ</div>

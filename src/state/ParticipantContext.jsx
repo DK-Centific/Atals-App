@@ -1,7 +1,10 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { TODAY } from '../data/schedule.js'
 import { milesFromHq } from '../lib/geo.js'
+import { OF_ENV, OF_PROJECT_ID } from '../lib/oneforma/config.ts'
 import { fetchParticipants, readCache, usingSample, writeCache } from '../lib/oneforma/participants.ts'
+import { nowIso } from '../lib/oneforma/time.ts'
+import { deliverCorrection } from '../lib/oneforma/transport.ts'
 import { loadZipPoints, zipPoint } from '../lib/zipPoints.js'
 import { useToast } from '../motion/Toast.jsx'
 import { useSchedule } from './ScheduleContext.jsx'
@@ -13,6 +16,23 @@ import { useSchedule } from './ScheduleContext.jsx'
 const ParticipantContext = createContext(null)
 
 const STALE_MS = 60 * 1000
+
+// An address fix applied in this browser while it saves (and in dry runs).
+// null address and ZIP = back to OneForma's address.
+function applyFix(p, fix) {
+  const of = p.corrected ? { address: p.corrected.ofAddress, postalCode: p.corrected.ofPostalCode } : { address: p.address, postalCode: p.postalCode }
+  if (!fix.address && !fix.postalCode) return { ...p, ...of, corrected: null }
+  return {
+    ...p,
+    address: fix.address ?? of.address,
+    postalCode: fix.postalCode ?? (fix.address ? null : of.postalCode),
+    corrected: { by: fix.by, at: fix.at, ofAddress: of.address, ofPostalCode: of.postalCode },
+    lat: null,
+    lng: null,
+    pointSource: null,
+    distMi: null,
+  }
+}
 
 // People with an address but no map point get their ZIP centre, so they show on
 // the map and sort by distance (marked as an estimate).
@@ -28,6 +48,7 @@ function placeByZip(list) {
 export function ParticipantProvider({ children }) {
   const cached = useRef(readCache()).current
   const [data, setData] = useState(cached)
+  const [fixes, setFixes] = useState({})
   // state: loading | loaded | failed; manual: the user pressed Sync.
   const [sync, setSync] = useState({ state: 'loading', manual: false, startedAt: performance.now(), error: null })
   const toast = useToast()
@@ -41,6 +62,8 @@ export function ParticipantProvider({ children }) {
       const fresh = await fetchParticipants()
       writeCache(fresh)
       setData(fresh)
+      // The read now carries any saved fix, so this browser's copies can go.
+      setFixes((f) => (Object.keys(f).length ? {} : f))
       setSync({ state: 'loaded', manual, error: null })
     } catch (err) {
       setSync({ state: 'failed', manual, error: err.message || 'OneForma didn’t answer' })
@@ -61,13 +84,35 @@ export function ParticipantProvider({ children }) {
 
   const [zipReady, setZipReady] = useState(false)
   useEffect(() => { loadZipPoints().then(setZipReady) }, [])
-  const participants = useMemo(
-    () => (zipReady ? placeByZip(data?.participants ?? []) : data?.participants ?? []),
-    [data, zipReady],
-  )
+  const participants = useMemo(() => {
+    const list = (data?.participants ?? []).map((p) => (fixes[p.id] ? applyFix(p, fixes[p.id]) : p))
+    return zipReady ? placeByZip(list) : list
+  }, [data, fixes, zipReady])
+
+  // Correct a participant's address (Admin, Scheduler). The fix is saved in Atlas and
+  // wins over every later OneForma pull; empty address and ZIP go back to OneForma's.
+  const correctAddress = useCallback(async (p, { address, postalCode }, by) => {
+    const fix = { address: address?.trim() || null, postalCode: postalCode?.trim() || null, by, at: nowIso() }
+    setFixes((f) => ({ ...f, [p.id]: fix }))
+    const result = await deliverCorrection({
+      schemaVersion: 1,
+      actionId: `atlas-pt-${p.id}-${Date.now().toString(36)}`,
+      action: 'participant.corrected',
+      environment: OF_ENV,
+      occurredAt: fix.at,
+      participant: { projectId: OF_PROJECT_ID, userId: p.userId, requestId: p.requestId, address: fix.address, postalCode: fix.postalCode },
+    })
+    if (!result.ok) {
+      setFixes((f) => { const { [p.id]: _, ...rest } = f; return rest })
+      return result
+    }
+    if (result.sent) run(false)
+    return result
+  }, [run])
 
   const value = useMemo(() => ({
     participants,
+    correctAddress,
     stats: data?.stats ?? null,
     fetchedAt: data?.fetchedAt ?? null,
     oneformaSync: data?.oneformaSync ?? null,
@@ -75,7 +120,7 @@ export function ParticipantProvider({ children }) {
     sync,
     syncNow,
     usingSample,
-  }), [data, participants, sync, syncNow])
+  }), [data, participants, sync, syncNow, correctAddress])
   return <ParticipantContext.Provider value={value}>{children}</ParticipantContext.Provider>
 }
 
@@ -101,15 +146,19 @@ export function bookingState(sessions, participantId) {
 // their map point or ZIP centre). Anyone already booked stays, wherever they are.
 export const QUEUE_RADIUS_MI = 40
 
-export function useQueue() {
+export const inArea = (p) => p.distMi != null && p.distMi <= QUEUE_RADIUS_MI
+
+// includeFar: also list open people outside the area or with no map point (the
+// Map's "Outside 40 mi" switch), so a wrong address can be found and corrected.
+export function useQueue({ includeFar = false } = {}) {
   const { participants } = useParticipants()
   const { sessions } = useSchedule()
   return useMemo(
     () => participants
       .filter((p) => p.active)
       .map((p) => ({ ...p, ...bookingState(sessions, p.id) }))
-      .filter((p) => p.status !== 'open' || (p.distMi != null && p.distMi <= QUEUE_RADIUS_MI)),
-    [participants, sessions],
+      .filter((p) => includeFar || p.status !== 'open' || inArea(p)),
+    [participants, sessions, includeFar],
   )
 }
 

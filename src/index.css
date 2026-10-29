@@ -1904,6 +1904,14 @@ button:disabled::after { display: none; }
 
 /* Rail button with a count badge that pops when the count changes */
 .atlas-sync-rail { @apply relative; }
+/* Address correction on the map's info tile. */
+.atlas-map-info-address { @apply flex flex-col gap-1; }
+.atlas-address-fix-note { @apply text-[11px] text-[var(--accent)]; }
+.atlas-address-fix-links { @apply flex gap-4 text-xs; }
+.atlas-address-fix { @apply grid grid-cols-[1fr_6rem] gap-3 mb-3; }
+.atlas-address-fix-actions { @apply col-span-2 flex items-center gap-4; }
+.atlas-queue-dot--far { background: var(--text-muted); }
+
 /* Release number: at the foot of the side rail and on the sign-in page. */
 .atlas-version { @apply text-[10px] leading-tight text-center text-[var(--text-secondary)] tabular-nums select-text; }
 .atlas-sidebar-version { @apply -mt-3 opacity-70; }

@@ -44,6 +44,11 @@ export interface RelationFields {
   phoneNumber?: string | null
   address?: string | null
   postalCode?: string | null
+  /** An address an Admin or Scheduler corrected in Atlas. The pull never writes these, so they win. */
+  addressOverride?: string | null
+  postalCodeOverride?: string | null
+  overrideBy?: string | null
+  overrideAt?: string | null
   role?: string | null
   locale?: string | null
   country?: string | null
@@ -82,6 +87,8 @@ export interface Participant {
   phone: string | null
   address: string
   postalCode: string | null
+  /** Set when the address was corrected in Atlas: who and when. OneForma's own address stays below. */
+  corrected: { by: string | null; at: string | null; ofAddress: string; ofPostalCode: string | null } | null
   city: string | null
   state: string | null
   locale: string | null
@@ -275,6 +282,16 @@ export interface ResendRequest {
 }
 
 /** What the app posts to the Atlas action flow: save the row, send emails, tell OneForma. */
+/** participant.corrected: an address fix that wins over the OneForma pull. Nulls clear it. */
+export interface ParticipantCorrection {
+  schemaVersion: 1
+  actionId: string
+  action: 'participant.corrected'
+  environment: 'uat' | 'prod'
+  occurredAt: string
+  participant: { projectId: string; userId: string; requestId: string; address: string | null; postalCode: string | null }
+}
+
 export interface ActionRequest {
   schemaVersion: 1
   /** The flow skips an actionId it has already done (safe retries, no double emails). */

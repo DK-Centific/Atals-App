@@ -4,7 +4,7 @@
 
 import { getToken } from '../auth/session.ts'
 import { ACTION_URL } from './config.ts'
-import type { ActionReply, ActionRequest, EmailRecipient, EmailedItem, OutboxStatus, RelayReply } from './types.ts'
+import type { ActionReply, ActionRequest, EmailRecipient, EmailedItem, OutboxStatus, ParticipantCorrection, RelayReply } from './types.ts'
 
 const TIMEOUT_MS = 20000
 const RECEIPTS = new Set(['APPLIED', 'WAITING_REFERENCE', 'IGNORED_STALE'])
@@ -75,6 +75,33 @@ export function readReply(httpStatus: number, reply: Partial<ActionReply> | null
   }
   const of = classify(reply.oneforma)
   return { ...of, message: of.message ?? message, duplicate: duplicate || of.duplicate, saved: true, emailed }
+}
+
+/** Saves an address correction through the action flow. Dry run (no flow): nothing is sent. */
+export async function deliverCorrection(request: ParticipantCorrection): Promise<{ ok: boolean; sent: boolean; message: string | null }> {
+  if (!ACTION_URL) return { ok: true, sent: false, message: null }
+  const ctrl = new AbortController()
+  const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS)
+  try {
+    const res = await fetch(ACTION_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify({ ...request, token: getToken() }),
+      signal: ctrl.signal,
+    })
+    let reply: { saved?: boolean; message?: string | null } | null = null
+    try { reply = await res.json() } catch { /* no body: go by the status */ }
+    if (res.status === 401) return { ok: false, sent: true, message: 'Your sign-in ran out. Sign in again, then save the address.' }
+    if (res.status >= 300 || reply?.saved === false) {
+      return { ok: false, sent: true, message: reply?.message ?? `The flow didn’t save it (${res.status})` }
+    }
+    return { ok: true, sent: true, message: reply?.message ?? null }
+  } catch (err) {
+    const timedOut = err instanceof DOMException && err.name === 'AbortError'
+    return { ok: false, sent: false, message: timedOut ? 'The action flow didn’t answer in time' : 'Couldn’t reach the action flow' }
+  } finally {
+    clearTimeout(timer)
+  }
 }
 
 export async function deliver(request: ActionRequest): Promise<Delivery> {

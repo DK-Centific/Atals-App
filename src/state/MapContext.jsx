@@ -14,10 +14,11 @@ export const MAP_LAYERS = [
   { id: 'booked', label: 'Booked' },
   { id: 'insession', label: 'In session' },
   { id: 'completed', label: 'Completed' },
+  { id: 'far', label: 'Outside 40 mi' },
 ]
 
 export function MapProvider({ children }) {
-  const [layers, setLayers] = useState({ open: true, booked: true, insession: true, completed: false })
+  const [layers, setLayers] = useState({ open: true, booked: true, insession: true, completed: false, far: false })
   const [focus, setFocus] = useState(null)
   const [range, setRange] = useState(() => ({ preset: 'today', ...rangeFor('today') }))
   const [rangeBarHidden, setRangeBarHidden] = useState(false)
