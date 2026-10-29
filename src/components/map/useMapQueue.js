@@ -12,8 +12,8 @@ import { useQueue } from '../../state/ParticipantContext.jsx'
 // fall in the date range; people open to book have no date and follow only
 // their layer switch.
 export default function useMapQueue() {
-  const queue = useQueue()
   const { layers, range } = useMap()
+  const queue = useQueue({ includeFar: layers.far })
   const picks = useFilteredPicks()
 
   const visible = useCallback((p) => layers[p.status]

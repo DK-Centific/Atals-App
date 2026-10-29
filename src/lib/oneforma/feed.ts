@@ -70,11 +70,20 @@ export function fromRows(rows: readonly ParticipantRow[], projectId: string): Pa
 }
 
 function toParticipant(r: ParticipantRow, coords: Coords): Participant {
-  // OneForma's own point first, then the Census geocoder's point for the address.
+  // A corrected address wins; OneForma's map point belongs to its own address, so it's
+  // dropped. The Census geocoder's point is for the address in use (the pull flow looks
+  // up the corrected one when there is one), so it counts either way.
+  const fixedAddress = text(r.addressOverride)
+  const fixedZip = text(r.postalCodeOverride)
+  const corrected = fixedAddress || fixedZip
+  const ofAddress = text(r.address) ?? [text(r.city), text(r.state)].filter(Boolean).join(', ')
+  const ofZip = text(r.postalCode == null ? null : String(r.postalCode))
   const geo = Number.isFinite(r.geoLat) && Number.isFinite(r.geoLng) ? { lat: r.geoLat as number, lng: r.geoLng as number } : null
-  const point = Number.isFinite(r.lat) && Number.isFinite(r.lng)
-    ? { lat: r.lat as number, lng: r.lng as number }
-    : geo ?? coords[r.userId] ?? null
+  const point = corrected
+    ? geo
+    : Number.isFinite(r.lat) && Number.isFinite(r.lng)
+      ? { lat: r.lat as number, lng: r.lng as number }
+      : geo ?? coords[r.userId] ?? null
   // Verified first + last name first; OneForma's fullName is only the Tools name (often a
   // username) where it couldn't verify the split, so it is the fallback.
   const first = text(r.firstName)
@@ -89,8 +98,11 @@ function toParticipant(r: ParticipantRow, coords: Coords): Participant {
     name: name || `OneForma user ${r.userId.slice(-4)}`,
     email: text(r.email),
     phone: text(r.phoneNumber),
-    address: text(r.address) ?? [text(r.city), text(r.state)].filter(Boolean).join(', '),
-    postalCode: text(r.postalCode == null ? null : String(r.postalCode)),
+    address: fixedAddress ?? ofAddress,
+    postalCode: fixedZip ?? (fixedAddress ? null : ofZip),
+    corrected: corrected
+      ? { by: text(r.overrideBy), at: text(r.overrideAt), ofAddress, ofPostalCode: ofZip }
+      : null,
     city: text(r.city),
     state: text(r.state),
     locale: text(r.locale),
