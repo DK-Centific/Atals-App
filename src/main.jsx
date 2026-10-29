@@ -5,9 +5,11 @@ import Root from './Root.jsx'
 import { AuthProvider } from './state/AuthContext.tsx'
 import { ToastProvider } from './motion/Toast.jsx'
 import { installFit } from './lib/fit.js'
+import { setUpInstall } from './lib/appInstall.js'
 import './index.css'
 
 installFit()
+setUpInstall()
 
 // GitHub Pages answers a direct link (e.g. /Atals-App/day/map) with 404.html, which keeps
 // the path and sends the browser to this build's root; put the path back before routing.

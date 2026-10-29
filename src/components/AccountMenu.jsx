@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { DEMO, setDemo } from '../lib/oneforma/config.ts'
+import { installMode, onInstallChange, promptInstall } from '../lib/appInstall.js'
 import { useToast } from '../motion/Toast.jsx'
 import { useAuth } from '../state/AuthContext.tsx'
 import { useRole } from '../state/RoleContext.jsx'
@@ -18,6 +19,9 @@ export default function AccountMenu({ placement = 'rail' }) {
   const { entries } = useSync()
   const toast = useToast()
   const [open, setOpen] = useState(false)
+  // 'prompt' | 'ios' | null: whether "Install app" can be offered on this device.
+  const [install, setInstall] = useState(installMode)
+  useEffect(() => onInstallChange(() => setInstall(installMode())), [])
   const ref = useRef(null)
 
   useEffect(() => {
@@ -39,6 +43,15 @@ export default function AccountMenu({ placement = 'rail' }) {
     }
     setOpen(false)
     void signOut()
+  }
+
+  const installApp = async () => {
+    setOpen(false)
+    if (install === 'ios') {
+      toast('To install Atlas: tap the Share button, then “Add to Home Screen”.')
+      return
+    }
+    if (await promptInstall()) toast('Atlas is installed. Open it from your home screen or app list.')
   }
 
   // Switching reloads into the other mode; real changes still on their way would
@@ -82,6 +95,11 @@ export default function AccountMenu({ placement = 'rail' }) {
             >
               <span>Demo data</span>
               <span className={`atlas-account-switch${DEMO ? ' is-on' : ''}`} aria-hidden="true"><span /></span>
+            </button>
+          )}
+          {install && (
+            <button type="button" role="menuitem" className="atlas-menu-item atlas-account-install" onClick={installApp}>
+              Install app
             </button>
           )}
           <button type="button" role="menuitem" className="atlas-menu-item atlas-account-signout" onClick={leave}>

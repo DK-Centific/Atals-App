@@ -1,4 +1,5 @@
-import { createContext, useContext, useMemo } from 'react'
+import { createContext, useContext, useEffect, useMemo } from 'react'
+import { setAppIdentity } from '../lib/appInstall.js'
 import { useAuth } from './AuthContext.tsx'
 
 // What the signed-in person may do, from their role. The flows check the same
@@ -20,6 +21,8 @@ export function RoleProvider({ children }) {
   const { user } = useAuth()
   const role = user?.role ?? null
   const email = user?.email ?? null
+  // The installable app's name and icon follow the role: "Atlas Admin" for Admins, "Atlas" otherwise.
+  useEffect(() => { setAppIdentity(role === 'admin') }, [role])
   const value = useMemo(() => ({
     role,
     label: ROLES.find((r) => r.id === role)?.label ?? '',
