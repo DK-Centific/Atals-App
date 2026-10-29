@@ -73,7 +73,8 @@ function toParticipant(r: ParticipantRow, coords: Coords): Participant {
   const point = Number.isFinite(r.lat) && Number.isFinite(r.lng)
     ? { lat: r.lat as number, lng: r.lng as number }
     : coords[r.userId] ?? null
-  const name = [text(r.firstName), text(r.lastName)].filter(Boolean).join(' ')
+  // fullName first: OneForma sends it for everyone, first/last only where it could verify the split.
+  const name = text(r.fullName) ?? [text(r.firstName), text(r.lastName)].filter(Boolean).join(' ')
   return {
     id: r.userId,
     userId: r.userId,

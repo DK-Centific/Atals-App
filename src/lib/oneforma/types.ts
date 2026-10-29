@@ -37,6 +37,8 @@ export interface RelationFields {
   jobId?: string | null
   status?: string | null
   email?: string | null
+  /** OneForma's display name (Prod sends it for everyone; first/last only where verified). */
+  fullName?: string | null
   firstName?: string | null
   lastName?: string | null
   phoneNumber?: string | null
