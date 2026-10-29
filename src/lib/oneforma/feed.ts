@@ -70,9 +70,11 @@ export function fromRows(rows: readonly ParticipantRow[], projectId: string): Pa
 }
 
 function toParticipant(r: ParticipantRow, coords: Coords): Participant {
+  // OneForma's own point first, then the Census geocoder's point for the address.
+  const geo = Number.isFinite(r.geoLat) && Number.isFinite(r.geoLng) ? { lat: r.geoLat as number, lng: r.geoLng as number } : null
   const point = Number.isFinite(r.lat) && Number.isFinite(r.lng)
     ? { lat: r.lat as number, lng: r.lng as number }
-    : coords[r.userId] ?? null
+    : geo ?? coords[r.userId] ?? null
   // Verified first + last name first; OneForma's fullName is only the Tools name (often a
   // username) where it couldn't verify the split, so it is the fallback.
   const first = text(r.firstName)
