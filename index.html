@@ -14,6 +14,21 @@
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" id="atlas-app-title" content="Atlas" />
+    <script>
+      // A signed-in Admin installs "Atlas Admin". The browser reads the manifest as the page
+      // loads, so pick it here, before that, from the saved sign-in (role only, nothing else).
+      (function () {
+        try {
+          var s = JSON.parse(localStorage.getItem('atlas_session_v1') || 'null')
+          if (!s || !s.user || String(s.user.role).toLowerCase() !== 'admin' || !(Date.parse(s.expiresAt) > Date.now())) return
+          var m = document.getElementById('atlas-manifest')
+          var t = document.getElementById('atlas-touch-icon')
+          m.setAttribute('href', m.getAttribute('href').replace('manifest.webmanifest', 'manifest-admin.webmanifest'))
+          t.setAttribute('href', t.getAttribute('href').replace('apple-touch-icon.png', 'apple-touch-icon-admin.png'))
+          document.getElementById('atlas-app-title').setAttribute('content', 'Atlas Admin')
+        } catch (e) { /* storage off: plain "Atlas" */ }
+      })()
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="" />
     <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500;600&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />

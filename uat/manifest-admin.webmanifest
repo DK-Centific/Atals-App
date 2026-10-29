@@ -1,8 +1,9 @@
 {
+  "id": "./?app=atlas-admin",
   "name": "Atlas Admin",
   "short_name": "Atlas Admin",
   "description": "Atlas scheduling: bookings, moderators and checklists.",
-  "start_url": "./",
+  "start_url": "./?app=atlas-admin",
   "scope": "./",
   "display": "standalone",
   "orientation": "any",

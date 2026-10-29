@@ -1,8 +1,9 @@
 {
+  "id": "./?app=atlas",
   "name": "Atlas",
   "short_name": "Atlas",
   "description": "Atlas scheduling: bookings, moderators and checklists.",
-  "start_url": "./",
+  "start_url": "./?app=atlas",
   "scope": "./",
   "display": "standalone",
   "orientation": "any",
