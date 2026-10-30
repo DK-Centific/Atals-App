@@ -35,7 +35,7 @@ export default function HomeTypes({ people, scopeNote }) {
   const unanswered = people.filter((p) => !p.home?.type).length
 
   return (
-    <section className="atlas-tracker-card atlas-raised-sm" aria-label="Home types">
+    <section className="atlas-tracker-card atlas-raised-sm" aria-label="Home types" data-tour="home-types">
       <div className="atlas-tracker-card-head">
         <span className="atlas-tracker-card-title">Home types</span>
         <div className="atlas-tracker-legend" aria-hidden="true">

@@ -32,7 +32,7 @@ export default function StatusLegend({ statuses = Object.keys(STATUS), wide = fa
   const unassignedOn = isPicked(picks, 'moderator', UNASSIGNED)
 
   return (
-    <div className={`atlas-legend${wide ? ' atlas-legend--wide' : ''}`} role="group" aria-label="Filter by status">
+    <div className={`atlas-legend${wide ? ' atlas-legend--wide' : ''}`} role="group" aria-label="Filter by status" data-tour="legend">
       <span className="atlas-legend-total" aria-label={`${total} sessions`}>
         <CountUp value={total} className="atlas-legend-count" /> <span className="atlas-legend-total-label">{total === 1 ? 'session' : 'sessions'}</span>
       </span>
@@ -59,6 +59,7 @@ export default function StatusLegend({ statuses = Object.keys(STATUS), wide = fa
         <button
           type="button"
           className={`atlas-legend-item atlas-legend-item--unassigned atlas-hit${unassignedOn ? ' is-focus-on' : ''}`}
+          data-tour="needs-moderator"
           aria-pressed={unassignedOn}
           aria-label={`Needs moderator: ${unassigned}`}
           title={unassignedOn ? 'Click again to clear' : 'Bookings an Admin still has to assign a moderator to'}

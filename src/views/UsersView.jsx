@@ -11,6 +11,7 @@ import useFocusTrap, { returnFocus } from '../motion/useFocusTrap.js'
 import { useToast } from '../motion/Toast.jsx'
 import { useAuth } from '../state/AuthContext.tsx'
 import { ROLES } from '../state/RoleContext.jsx'
+import TourButton from '../tour/TourButton.jsx'
 
 // Admin > Users: who can sign in to Atlas, with which role. Active moderators are
 // the people sessions can be booked with. Adding a
@@ -257,14 +258,17 @@ export default function UsersView() {
                 Who can sign in, and what they see.{local ? ' Test mode: kept in this browser until the sign-in flow is connected.' : ''}
               </p>
             </div>
-            <button type="button" className="atlas-btn-primary atlas-btn-primary--compact atlas-users-add" onClick={open({ mode: 'add' })}>
-              <PlusIcon /> Add user
-            </button>
+            <div className="atlas-head-actions">
+              <TourButton />
+              <button type="button" className="atlas-btn-primary atlas-btn-primary--compact atlas-users-add" data-tour="users-add" onClick={open({ mode: 'add' })}>
+                <PlusIcon /> Add user
+              </button>
+            </div>
           </header>
 
           {loadError && <p className="atlas-users-error" role="alert">{loadError} <button type="button" className="atlas-link" onClick={() => void load()}>Try again</button></p>}
 
-          <div className="atlas-users-table atlas-well" role="table" aria-label="Users">
+          <div className="atlas-users-table atlas-well" role="table" aria-label="Users" data-tour="users-table">
             <div className="atlas-users-row atlas-users-row--head" role="row">
               {['Name', 'Role', 'Shown as', 'Status', 'Last sign-in'].map((h) => <span key={h} role="columnheader" className="atlas-eyebrow">{h}</span>)}
             </div>

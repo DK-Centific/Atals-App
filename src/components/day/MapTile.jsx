@@ -60,6 +60,7 @@ export default function MapTile({ onOpen }) {
     <button
       type="button"
       className="atlas-map-tile atlas-raised"
+      data-tour="map-tile"
       data-map-source
       aria-haspopup="dialog"
       aria-label={`Open map. ${summary}.`}

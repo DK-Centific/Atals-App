@@ -12,6 +12,7 @@ import useSlidingPill from '../motion/useSlidingPill.js'
 import { useSchedule } from '../state/ScheduleContext.jsx'
 import { useModerators } from '../state/ModeratorContext.jsx'
 import { QUEUE_RADIUS_MI, bookingState, inArea, useParticipants } from '../state/ParticipantContext.jsx'
+import TourButton from '../tour/TourButton.jsx'
 
 // Admin > Production tracker. Everything is counted from the bookings
 // (Atlas_Bookings): no separate tracker list. Status colours are Atlas's status
@@ -219,18 +220,21 @@ export default function TrackerView() {
               <span className="atlas-eyebrow">ADMIN · {range === 'week' ? weekRangeLabel(week).toUpperCase() : 'ALL SESSIONS'}</span>
               <h1 className="atlas-tracker-title">Production tracker</h1>
             </div>
-            <div ref={trackRef} className="atlas-view-switch atlas-view-switch--recessed atlas-checklist-segment" role="group" aria-label="Range">
-              <div {...pillProps} className={`${pillProps.className} atlas-view-pill`} />
-              {RANGES.map((r) => (
-                <button key={r.id} type="button" className={`atlas-view-tab${range === r.id ? ' is-active' : ''}`}
-                  data-pill-active={range === r.id} aria-pressed={range === r.id} onClick={() => setRange(r.id)}>
-                  {r.label}
-                </button>
-              ))}
+            <div className="atlas-head-actions">
+              <TourButton />
+              <div ref={trackRef} className="atlas-view-switch atlas-view-switch--recessed atlas-checklist-segment" role="group" aria-label="Range" data-tour="tracker-range">
+                <div {...pillProps} className={`${pillProps.className} atlas-view-pill`} />
+                {RANGES.map((r) => (
+                  <button key={r.id} type="button" className={`atlas-view-tab${range === r.id ? ' is-active' : ''}`}
+                    data-pill-active={range === r.id} aria-pressed={range === r.id} onClick={() => setRange(r.id)}>
+                    {r.label}
+                  </button>
+                ))}
+              </div>
             </div>
           </header>
 
-          <section className="atlas-tracker-tiles" aria-label="Headline numbers">
+          <section className="atlas-tracker-tiles" aria-label="Headline numbers" data-tour="tracker-tiles">
             <Tile label="Scheduled" value={scheduled} note={`${total} booked in all`} />
             <Tile label="Completed" value={counts.completed} note={`${pct(counts.completed, scheduled)}% of scheduled`} />
             <Tile label="Weekly target" value={pct(weekDone, WEEKLY_TARGET)} suffix="%" note={`${weekDone} of ${WEEKLY_TARGET} this week`} />

@@ -14,7 +14,7 @@ export default function TodaySummary({ date, sessions }) {
   const delay = useStagger(sessions.map((s) => s.id))
 
   return (
-    <section className="atlas-today">
+    <section className="atlas-today" data-tour="today-strip">
       <div className="atlas-today-head">
         <span className="atlas-today-title">{longDayLabel(date)} · Today’s sessions</span>
         <button type="button" className="atlas-today-link atlas-link-quiet" onClick={() => goTo('/day')}>

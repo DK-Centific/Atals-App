@@ -224,7 +224,7 @@ export default function BookingPanel({ participant = null, onBooked = null }) {
         </Collapse>
       </div>
 
-      <div className="atlas-booking-moderators">
+      <div className="atlas-booking-moderators" data-tour="booking-moderator">
         <div className="atlas-booking-moderators-head">
           <span className="atlas-eyebrow">MODERATOR (OPTIONAL)</span>
           {isAdmin && <Link to="/admin/users" className="atlas-moderator-create atlas-link">MANAGE</Link>}
@@ -251,7 +251,7 @@ export default function BookingPanel({ participant = null, onBooked = null }) {
   }
 
   return (
-    <section ref={panelRef} className="atlas-booking atlas-raised">
+    <section ref={panelRef} className="atlas-booking atlas-raised" data-tour="new-booking">
       <div className="atlas-booking-head">
         <h2 className="atlas-booking-title">New Booking</h2>
         <button

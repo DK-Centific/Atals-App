@@ -2633,3 +2633,75 @@ button:disabled::after { display: none; }
 .atlas-filter-pill-count { @apply text-[11px] tabular-nums text-[var(--text-muted)]; }
 .atlas-filter-pill.is-on .atlas-filter-pill-count { @apply text-[var(--text-secondary)]; }
 .atlas-booking-widen { @apply block mt-1.5 text-xs text-[var(--text-muted)] leading-relaxed; }
+
+/* ---------- App tour ----------
+   The page dims around a spotlight with a soft pulsing ring; a glass bubble explains
+   the step. Under 640px the bubble is a bottom sheet. */
+.atlas-tour { @apply fixed inset-0 z-[1100]; animation: fade 200ms var(--ease-out) backwards; }
+.atlas-tour[data-state="closing"] { @apply pointer-events-none; animation: fadeOut 150ms var(--ease-out) forwards; }
+.atlas-tour-block { @apply fixed inset-0; }
+.atlas-tour-spot {
+    @apply fixed rounded-2xl pointer-events-none;
+    box-shadow: 0 0 0 200vmax rgba(6, 7, 9, 0.64), 0 0 0 2px rgba(0, 229, 255, 0.55), 0 0 24px rgba(0, 229, 255, 0.25);
+}
+.atlas-tour-spot.is-none { box-shadow: 0 0 0 200vmax rgba(6, 7, 9, 0.64); }
+.atlas-tour-spot::after {
+    content: ''; position: absolute; inset: -2px; border-radius: inherit;
+    box-shadow: 0 0 0 2px rgba(0, 229, 255, 0.5);
+    animation: tourPulse 1800ms var(--ease-out) infinite;
+}
+.atlas-tour-spot.is-none::after { content: none; }
+@keyframes tourPulse { from { opacity: 0.9; scale: 1; } to { opacity: 0; scale: 1.06; } }
+/* Gliding from one step to the next; while you scroll it follows without lag. */
+.atlas-tour.is-moving .atlas-tour-spot { transition: left 360ms var(--ease-out), top 360ms var(--ease-out), width 360ms var(--ease-out), height 360ms var(--ease-out); }
+.atlas-tour.is-moving .atlas-tour-bubble:not(.is-sheet) { transition: left 360ms var(--ease-out), top 360ms var(--ease-out); }
+
+.atlas-tour-bubble {
+    @apply fixed flex flex-col gap-4 p-5 rounded-[1.25rem];
+    width: min(22rem, calc(100vw - 24px));
+    background: rgba(34, 36, 40, 0.96);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    box-shadow: var(--neu-flat);
+    animation: tourIn 260ms var(--ease-out) backwards;
+}
+@keyframes tourIn { from { opacity: 0; transform: translateY(6px) scale(0.97); } }
+.atlas-tour-bubble.is-sheet {
+    left: 0; right: 0; bottom: 0; width: 100%;
+    @apply rounded-b-none rounded-t-[1.75rem];
+    padding-bottom: calc(1.25rem + env(safe-area-inset-bottom));
+    transform-origin: 50% 100%;
+    animation: sheetUp 480ms var(--spring) backwards;
+}
+.atlas-tour-content { @apply flex flex-col gap-1.5; }
+.atlas-tour-title { @apply text-lg font-semibold text-[var(--text-primary)]; }
+.atlas-tour-body { @apply text-sm leading-relaxed text-[var(--text-secondary)]; }
+.atlas-tour-foot { @apply flex items-center justify-between gap-3 flex-wrap; }
+.atlas-tour-count { @apply flex items-center gap-2 text-xs tabular-nums text-[var(--text-muted)] whitespace-nowrap; }
+.atlas-tour-dots { @apply flex items-center gap-1; }
+.atlas-tour-dot { @apply w-1.5 h-1.5 rounded-full bg-[rgba(255,255,255,0.18)]; transition: width 240ms var(--ease-out), background-color 240ms var(--ease-out); }
+.atlas-tour-dot.is-on { @apply w-4 bg-[var(--accent)]; }
+.atlas-tour-actions { @apply flex items-center gap-2 ml-auto; }
+.atlas-tour-skip { @apply text-xs mr-1 whitespace-nowrap; }
+.atlas-tour-back,
+.atlas-tour-next { @apply py-2.5 px-4 text-sm rounded-xl; }
+
+/* "Tour" in page headers: replays the page's tour. */
+.atlas-tour-btn {
+    @apply inline-flex items-center gap-1.5 h-9 px-3.5 rounded-full text-[13px] font-medium whitespace-nowrap cursor-pointer text-[var(--text-secondary)];
+    background: var(--bg-surface); border: var(--border-subtle);
+    transition: color 200ms var(--ease-out), scale 150ms var(--ease-out);
+}
+.atlas-tour-btn:active { scale: 0.97; }
+@media (hover: hover) and (pointer: fine) {
+    .atlas-tour-btn:hover { color: var(--text-primary); }
+}
+.atlas-head-actions { @apply flex items-center gap-3; }
+.atlas-account-tour { @apply w-full text-left; }
+
+@media (prefers-reduced-motion: reduce) {
+    .atlas-tour, .atlas-tour-bubble, .atlas-tour-bubble.is-sheet { animation: fade 120ms linear backwards; }
+    .atlas-tour-spot::after { animation: none; opacity: 0; }
+    .atlas-tour.is-moving .atlas-tour-spot, .atlas-tour.is-moving .atlas-tour-bubble:not(.is-sheet) { transition: none; }
+}

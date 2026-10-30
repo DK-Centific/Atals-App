@@ -101,6 +101,7 @@ export function MapDateBar({ map, booked }) {
   return (
     <section
       className="atlas-range-bar atlas-map-chrome"
+      data-tour="map-dates"
       data-state={state}
       aria-label="Booking dates on the map"
       onAnimationEnd={onAnimationEnd}

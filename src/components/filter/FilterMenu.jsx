@@ -79,6 +79,7 @@ export default function FilterMenu({ before = null, beforeLabel = '' }) {
         ref={triggerRef}
         type="button"
         className={`atlas-filter-trigger atlas-icon-btn atlas-raised-sm${count ? ' is-on' : ''}`}
+        data-tour="filters"
         aria-haspopup="dialog"
         aria-expanded={open}
         aria-controls="atlas-filter-panel"

@@ -19,6 +19,7 @@ import { useSchedule } from '../../state/ScheduleContext.jsx'
 import { useAuth } from '../../state/AuthContext.tsx'
 import FilterBar from '../filter/FilterBar.jsx'
 import FilterMenu from '../filter/FilterMenu.jsx'
+import TourButton from '../../tour/TourButton.jsx'
 import { DateRangePicker, MapDateBar } from './MapDateRange.jsx'
 import MapBookingSheet from './MapBookingSheet.jsx'
 import useMapQueue from './useMapQueue.js'
@@ -393,7 +394,7 @@ function LiveMap({ onClose }) {
 
   return (
     <>
-      <div ref={containerRef} className="atlas-map-canvas" aria-label="Map of participants around Centific HQ" />
+      <div ref={containerRef} className="atlas-map-canvas" data-tour="map-canvas" aria-label="Map of participants around Centific HQ" />
 
       {hqHost.get('hq') && createPortal(
         <div className="atlas-map-hq" title={HQ.address}>
@@ -432,6 +433,7 @@ function LiveMap({ onClose }) {
       <MapDateBar map={map} booked={shown.filter((p) => p.session).length} />
 
       <div className="atlas-map-tools atlas-map-chrome">
+        <TourButton />
         <FilterMenu before={<DateRangePicker />} beforeLabel="Booking dates" />
       </div>
 
@@ -566,12 +568,12 @@ function QueuePanel({ shown, total, onClose }) {
 
   return (
     <>
-      <button type="button" className="atlas-map-back atlas-map-chrome" onClick={onClose}>
+      <button type="button" className="atlas-map-back atlas-map-chrome" data-tour="map-back" onClick={onClose}>
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M19 12H5M12 19l-7-7 7-7" /></svg>
         <span className="atlas-map-back-label">RETURN TO SCHEDULE</span>
       </button>
 
-      <section className="atlas-queue atlas-map-chrome" aria-label="OneForma participant queue">
+      <section className="atlas-queue atlas-map-chrome" data-tour="map-queue" aria-label="OneForma participant queue">
         <div className="atlas-queue-head">
           <div>
             <div className="atlas-eyebrow atlas-queue-eyebrow">ONEFORMA · ENDORSED</div>
@@ -623,7 +625,7 @@ function QueuePanel({ shown, total, onClose }) {
           {rows.length === 0 && <li className="atlas-empty atlas-row-in">No one in the queue matches.</li>}
         </ol>
 
-        <div className="atlas-queue-layers" role="group" aria-label="Show on map">
+        <div className="atlas-queue-layers" role="group" aria-label="Show on map" data-tour="map-layers">
           {MAP_LAYERS.map((l) => (
             <button
               key={l.id}

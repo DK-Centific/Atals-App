@@ -23,6 +23,7 @@ export default function RefreshRailButton() {
     <button
       type="button"
       className={`atlas-rail-item atlas-refresh-rail${busy ? ' is-busy' : ''}`}
+      data-tour="refresh"
       title={label}
       aria-label={label}
       aria-busy={busy}

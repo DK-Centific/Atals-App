@@ -19,7 +19,7 @@ export default function MonthGrid({ cells, chipsFor, selected, onSelect, slide, 
       <div className="atlas-month-weekdays">
         {DOW.map((d) => <div key={d} className="atlas-eyebrow atlas-month-weekday">{d}</div>)}
       </div>
-      <div key={slide.key} className={`atlas-month-grid${slide.dir ? ` atlas-slide-${slide.dir}` : ''}`}>
+      <div key={slide.key} data-tour="month-grid" className={`atlas-month-grid${slide.dir ? ` atlas-slide-${slide.dir}` : ''}`}>
         {cells.map((c, i) => {
           const today = c.date === TODAY
           const chips = chipsFor(c.date)

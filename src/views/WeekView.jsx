@@ -1,5 +1,6 @@
 import Sidebar from '../components/Sidebar.jsx'
 import ViewToggle from '../components/ViewToggle.jsx'
+import TourButton from '../tour/TourButton.jsx'
 import StatusLegend from '../components/StatusLegend.jsx'
 import WeekGrid from '../components/week/WeekGrid.jsx'
 import FilterMenu from '../components/filter/FilterMenu.jsx'
@@ -25,12 +26,13 @@ export default function WeekView() {
           <header className="atlas-timeline-header">
             <div>
               <div className="atlas-timeline-title-row">
-                <h1 className="atlas-timeline-title">This week</h1>
+                <h1 className="atlas-timeline-title" data-tour="week-title">This week</h1>
                 <span className="atlas-title-date">{weekRangeLabel(week)}</span>
               </div>
               <StatusLegend wide sessions={inWeek} />
             </div>
             <div className="atlas-header-tools">
+              <TourButton />
               <FilterMenu />
               <ViewToggle />
             </div>

@@ -43,7 +43,7 @@ export default function WeekGrid({ sessions, weekDate = TODAY }) {
     inWeek.filter((s) => s.date === date && Number(s.start.slice(0, 2)) === hour)
 
   return (
-    <div className="atlas-week-grid">
+    <div className="atlas-week-grid" data-tour="week-grid">
       <div className="atlas-week-day-head" />
       {week.map((d) => {
         const today = d.date === TODAY

@@ -9,6 +9,8 @@ import { ParticipantProvider } from './state/ParticipantContext.jsx'
 import { FilterProvider } from './state/FilterContext.jsx'
 import { MapProvider } from './state/MapContext.jsx'
 import { ModeratorProvider } from './state/ModeratorContext.jsx'
+import Tour from './tour/Tour.jsx'
+import { TourProvider } from './tour/TourContext.jsx'
 
 // Sign-in first. Once signed in, the data providers mount for that person;
 // keyed by email, so the next person on this device starts clean.
@@ -25,8 +27,11 @@ export default function Root() {
             <ParticipantProvider>
               <FilterProvider>
                 <MapProvider>
-                  <DemoBanner />
-                  <App />
+                  <TourProvider>
+                    <DemoBanner />
+                    <App />
+                    <Tour />
+                  </TourProvider>
                 </MapProvider>
               </FilterProvider>
             </ParticipantProvider>

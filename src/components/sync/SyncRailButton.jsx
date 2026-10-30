@@ -5,7 +5,7 @@ export default function SyncRailButton() {
   const { attention, dryRun, setOpen } = useSync()
   const label = `OneForma sync${dryRun ? ' (dry run)' : ''}${attention ? `, ${attention} need attention` : ''}`
   return (
-    <button type="button" className="atlas-rail-item atlas-sync-rail" title={label} aria-label={label} onClick={() => setOpen(true)}>
+    <button type="button" className="atlas-rail-item atlas-sync-rail" data-tour="sync" title={label} aria-label={label} onClick={() => setOpen(true)}>
       <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
         <path d="M4 7h13l-3-3M20 17H7l3 3" />
       </svg>

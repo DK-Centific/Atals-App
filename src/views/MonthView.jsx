@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import Sidebar from '../components/Sidebar.jsx'
 import ViewToggle from '../components/ViewToggle.jsx'
+import TourButton from '../tour/TourButton.jsx'
 import StatusLegend from '../components/StatusLegend.jsx'
 import TodaySummary from '../components/month/TodaySummary.jsx'
 import MonthGrid from '../components/month/MonthGrid.jsx'
@@ -66,7 +67,7 @@ export default function MonthView() {
           <div>
             <div className="atlas-month-title-row">
               <h1 key={`${ym.y}-${ym.m}`} className={`atlas-month-title${slide.dir ? ' atlas-status-line' : ''}`}>{monthTitle(ym.y, ym.m)}</h1>
-              <div className="atlas-month-nav">
+              <div className="atlas-month-nav" data-tour="month-nav">
                 <button type="button" className="atlas-month-nav-btn atlas-icon-btn atlas-raised-sm" aria-label="Previous month" onClick={() => shift(-1)}>&lt;</button>
                 <button type="button" className="atlas-month-nav-btn atlas-icon-btn atlas-raised-sm" aria-label="Next month" onClick={() => shift(1)}>&gt;</button>
               </div>
@@ -74,6 +75,7 @@ export default function MonthView() {
             <StatusLegend statuses={['insession', 'booked', 'completed']} sessions={monthSessions} />
           </div>
           <div className="atlas-header-tools">
+            <TourButton />
             <FilterMenu />
             <ViewToggle tone="recessed" />
           </div>

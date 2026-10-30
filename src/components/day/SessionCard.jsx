@@ -16,7 +16,7 @@ const CARD_CLASS = {
 
 // onShowLive: given for an in-session card on the Day view; a click (or Enter) then
 // shows or hides the live card instead of opening the booking. Right-click is unchanged.
-export default function SessionCard({ session, style, selected = false, onShowLive }) {
+export default function SessionCard({ session, style, selected = false, onShowLive, tour }) {
   const { name: moderatorName, fullName } = useModerators()
   const live = session.status === 'insession'
   const triggers = useBookingTriggers()
@@ -39,7 +39,7 @@ export default function SessionCard({ session, style, selected = false, onShowLi
   } : own
 
   return (
-    <article className={`${CARD_CLASS[session.status]}${selected ? ' is-selected' : ''} atlas-row-in`} style={style} {...props} aria-label={`${session.name}, ${timeRange(session.start, session.end)}`}>
+    <article className={`${CARD_CLASS[session.status]}${selected ? ' is-selected' : ''} atlas-row-in`} style={style} {...props} data-tour={tour} aria-label={`${session.name}, ${timeRange(session.start, session.end)}`}>
       {live && <div className="atlas-session-glow" />}
 
       <div className="atlas-session-time">

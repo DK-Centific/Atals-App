@@ -16,6 +16,7 @@ import { useModerators } from '../state/ModeratorContext.jsx'
 import { useRole } from '../state/RoleContext.jsx'
 import { useSchedule } from '../state/ScheduleContext.jsx'
 import { TODAY } from '../data/schedule.js'
+import TourButton from '../tour/TourButton.jsx'
 
 // Email templates: Schedulers copy a ready email (filled from a booking) and
 // paste it into Outlook. Admins also see the moderator email and can edit every
@@ -195,10 +196,11 @@ export default function TemplatesView() {
                 Pick a booking, copy the email, and paste it into Outlook.{isAdmin ? ' Admins can edit every template.' : ''}
               </p>
             </div>
+            <TourButton />
           </header>
 
           <div className="atlas-templates-body">
-            <nav className="atlas-templates-list" aria-label="Templates">
+            <nav className="atlas-templates-list" aria-label="Templates" data-tour="templates-list">
               {groups.map((g) => (
                 <div key={g.audience} className="atlas-templates-group">
                   <span className="atlas-eyebrow atlas-templates-group-title">{AUDIENCE_LABEL[g.audience]}</span>
@@ -231,7 +233,7 @@ export default function TemplatesView() {
               {!editing ? (
                 <div key={meta.id} className="atlas-templates-pane atlas-swap-in">
                   <div className="atlas-templates-bar">
-                    <label className="atlas-templates-fill">
+                    <label className="atlas-templates-fill" data-tour="templates-fill">
                       <span className="atlas-eyebrow">Fill from booking</span>
                       <select className="atlas-input atlas-templates-select" value={bookingId} onChange={(e) => setBookingId(e.target.value)}>
                         <option value="">No booking (show fields to fill in)</option>
@@ -257,9 +259,9 @@ export default function TemplatesView() {
 
                   <footer className="atlas-templates-actions">
                     {isAdmin && (
-                      <button type="button" className="atlas-btn-ghost atlas-templates-edit" onClick={startEdit}>Edit template</button>
+                      <button type="button" className="atlas-btn-ghost atlas-templates-edit" data-tour="templates-edit" onClick={startEdit}>Edit template</button>
                     )}
-                    <button type="button" className="atlas-btn-primary atlas-btn-primary--compact atlas-templates-copy" onClick={copyEmail}>
+                    <button type="button" className="atlas-btn-primary atlas-btn-primary--compact atlas-templates-copy" data-tour="templates-copy" onClick={copyEmail}>
                       Copy email
                     </button>
                   </footer>

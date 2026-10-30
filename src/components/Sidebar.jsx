@@ -50,6 +50,7 @@ export default function Sidebar({ variant = 'default' }) {
               className={`atlas-rail-item${active ? ' is-active' : ''}${path ? '' : ' is-soon'}`}
               title={title}
               aria-label={title}
+              data-tour={`rail-${id}`}
               aria-current={active ? 'page' : undefined}
               disabled={!path}
               onClick={() => { if (path && !active) goTo(path) }}

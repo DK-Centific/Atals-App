@@ -31,6 +31,7 @@ export default function ViewToggle({ tone = 'surface' }) {
       className={`atlas-view-switch${TONE_CLASS[tone] ?? ''}`}
       role="group"
       aria-label="Calendar view"
+      data-tour="view-toggle"
     >
       <div {...pillProps} className={`${pillProps.className} atlas-view-pill`} />
       {VIEWS.map(({ path, label }) => {

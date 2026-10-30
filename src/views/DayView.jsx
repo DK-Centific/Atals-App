@@ -11,6 +11,7 @@ import FilterMenu from '../components/filter/FilterMenu.jsx'
 import FilterBar from '../components/filter/FilterBar.jsx'
 import MapView from '../components/map/MapView.jsx'
 import PtClock from '../components/PtClock.jsx'
+import TourButton from '../tour/TourButton.jsx'
 import { TODAY } from '../data/schedule.js'
 import { fullDayLabel } from '../lib/dates.js'
 import { useStagger } from '../motion/motion.js'
@@ -32,6 +33,7 @@ export default function DayView() {
   const lastLive = useRef(null)
   if (live) lastLive.current = live
   useEffect(() => { if (liveId && !live) setLiveId(null) }, [liveId, live])
+  const firstLiveId = role !== 'scheduler' ? day.find((s) => s.status === 'insession')?.id : undefined
   const toggleLive = useCallback((id) => setLiveId((cur) => (cur === id ? null : id)), [])
   // Hiding from the card itself sends focus back to its session in the list.
   const hideLive = useCallback(() => {
@@ -73,20 +75,22 @@ export default function DayView() {
         <div className="atlas-schedule-panel">
           <header className="atlas-schedule-header">
             <div>
-              <h1 className="atlas-schedule-title">Today <span className="atlas-title-date">{fullDayLabel(TODAY)}</span></h1>
+              <h1 className="atlas-schedule-title" data-tour="day-title">Today <span className="atlas-title-date">{fullDayLabel(TODAY)}</span></h1>
               <StatusLegend sessions={day} />
             </div>
             <div className="atlas-header-tools">
               <PtClock />
+              <TourButton />
               <FilterMenu />
             </div>
           </header>
           <FilterBar shown={sessions.length} total={day.length} />
 
           <div className="atlas-session-list">
-            {sessions.map((s) => (
+            {sessions.map((s, i) => (
               <SessionCard
                 key={s.id}
+                tour={i === 0 ? 'session-card' : s.id === firstLiveId ? 'session-live' : undefined}
                 session={s}
                 style={delay(s.id)}
                 selected={s.id === live?.id}

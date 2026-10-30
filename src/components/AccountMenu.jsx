@@ -5,6 +5,7 @@ import { useToast } from '../motion/Toast.jsx'
 import { useAuth } from '../state/AuthContext.tsx'
 import { useRole } from '../state/RoleContext.jsx'
 import { useSync } from '../state/SyncContext.tsx'
+import { useTour } from '../tour/TourContext.jsx'
 
 /** Outbox states still on their way to SharePoint. */
 const UNSENT = new Set(['pending', 'sending', 'failed'])
@@ -17,6 +18,7 @@ export default function AccountMenu({ placement = 'rail' }) {
   const { user, signOut } = useAuth()
   const { label, canBook } = useRole()
   const { entries } = useSync()
+  const { replayAll } = useTour()
   const toast = useToast()
   const [open, setOpen] = useState(false)
   // 'prompt' | 'ios' | null: whether "Install app" can be offered on this device.
@@ -65,7 +67,7 @@ export default function AccountMenu({ placement = 'rail' }) {
   }
 
   return (
-    <div ref={ref} className={`atlas-role atlas-role--${placement}`}>
+    <div ref={ref} className={`atlas-role atlas-role--${placement}`} data-tour="account">
       <button
         type="button"
         className="atlas-role-trigger atlas-well-sm"
@@ -95,6 +97,11 @@ export default function AccountMenu({ placement = 'rail' }) {
             >
               <span>Demo data</span>
               <span className={`atlas-account-switch${DEMO ? ' is-on' : ''}`} aria-hidden="true"><span /></span>
+            </button>
+          )}
+          {canBook && (
+            <button type="button" role="menuitem" className="atlas-menu-item atlas-account-tour" onClick={() => { setOpen(false); replayAll() }}>
+              Take the tour
             </button>
           )}
           {install && (
