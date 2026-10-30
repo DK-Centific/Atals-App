@@ -14,7 +14,7 @@ import { useQueue } from '../../state/ParticipantContext.jsx'
 // their layer switch.
 export default function useMapQueue() {
   const { layers, range } = useMap()
-  const queue = useQueue({ includeFar: layers.far })
+  const queue = useQueue()
   const picks = useFilteredPicks()
 
   const visible = useCallback((p) => layers[p.status]

@@ -4,6 +4,7 @@ import { MS } from '../../motion/motion.js'
 import usePresence from '../../motion/usePresence.js'
 import useFocusTrap, { returnFocus } from '../../motion/useFocusTrap.js'
 import { isPicked, useFilterGroups, useFilters } from '../../state/FilterContext.jsx'
+import { QUEUE_RADIUS_MI, RANGE_OPTIONS, useParticipants, useQueue, withinRange } from '../../state/ParticipantContext.jsx'
 import { CheckIcon, CloseIcon, FilterIcon } from '../Icons.jsx'
 
 // Toolbar filter menu (spec sections 5 and 6). On desktop a glass popover grows
@@ -19,7 +20,10 @@ export default function FilterMenu({ before = null, beforeLabel = '' }) {
   const closedByOutside = useRef(false)
   const [pos, setPos] = useState(null)
   const [justOn, setJustOn] = useState(null)
-  const count = picks.length
+  const { rangeMi, setRangeMi } = useParticipants()
+  const wider = rangeMi !== QUEUE_RADIUS_MI
+  const count = picks.length + (wider ? 1 : 0)
+  const clearEverything = () => { clearAll(); setRangeMi(QUEUE_RADIUS_MI) }
 
   const close = (outside = false) => {
     closedByOutside.current = outside
@@ -102,7 +106,7 @@ export default function FilterMenu({ before = null, beforeLabel = '' }) {
             <div className="atlas-filter-head atlas-filter-row" style={{ animationDelay: '60ms' }}>
               <span className="atlas-filter-title">Filters</span>
               {count > 0 && (
-                <button type="button" className="atlas-link atlas-filter-clear" onClick={clearAll}>Clear all</button>
+                <button type="button" className="atlas-link atlas-filter-clear" onClick={clearEverything}>Clear all</button>
               )}
               <button type="button" className="atlas-filter-close atlas-icon-btn" aria-label="Close filters" onClick={() => close()}>
                 <CloseIcon />
@@ -156,7 +160,12 @@ export default function FilterMenu({ before = null, beforeLabel = '' }) {
                   </section>
                 )
               })}
-              <p className="atlas-filter-hint atlas-filter-row" style={{ animationDelay: `${60 + 3 * MS.rowStep}ms` }}>
+              <RangeSection
+                value={rangeMi}
+                onChange={setRangeMi}
+                delay={60 + (groups.length + 1) * MS.rowStep}
+              />
+              <p className="atlas-filter-hint atlas-filter-row" style={{ animationDelay: `${60 + (groups.length + 2) * MS.rowStep}ms` }}>
                 Picks in one group widen (any of). Groups narrow each other.
               </p>
             </div>
@@ -169,5 +178,43 @@ export default function FilterMenu({ before = null, beforeLabel = '' }) {
         document.body,
       )}
     </>
+  )
+}
+
+// Range from HQ: one choice, shared by the Map and New Booking. Each option shows
+// how many people are open to book within it, so a wider range shows its gain.
+function RangeSection({ value, onChange, delay }) {
+  const everyone = useQueue({ rangeMi: null })
+  const open = everyone.filter((p) => p.status === 'open')
+  return (
+    <section className="atlas-filter-group atlas-filter-row" style={{ animationDelay: `${delay}ms` }} aria-label="Range from HQ">
+      <div className="atlas-filter-group-head">
+        <span className="atlas-eyebrow">RANGE FROM HQ</span>
+        {value !== QUEUE_RADIUS_MI && (
+          <button type="button" className="atlas-link atlas-filter-clear" onClick={() => onChange(QUEUE_RADIUS_MI)}>Reset</button>
+        )}
+      </div>
+      <div className="atlas-filter-options" role="radiogroup" aria-label="Range from HQ (one of)">
+        {RANGE_OPTIONS.map((mi) => {
+          const on = mi === value
+          const n = open.filter((p) => withinRange(p, mi)).length
+          return (
+            <button
+              key={mi ?? 'any'}
+              type="button"
+              role="radio"
+              aria-checked={on}
+              className={`atlas-filter-pill${on ? ' is-on' : ''}`}
+              title={mi == null ? `Everyone open to book, including people with no map point (${n})` : `${n} open to book within ${mi} mi of HQ`}
+              onClick={() => onChange(mi)}
+            >
+              {mi == null ? 'Any' : `${mi} mi`}
+              <span className="atlas-filter-pill-count">{n}</span>
+              {on && <span className="atlas-filter-check"><CheckIcon /></span>}
+            </button>
+          )
+        })}
+      </div>
+    </section>
   )
 }

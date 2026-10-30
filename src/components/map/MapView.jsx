@@ -257,7 +257,7 @@ function LiveMap({ onClose }) {
   const { map, baseZoom, tiles } = useLibreMap(containerRef)
   const inView = useViewBounds(map)
   const { layers: mapLayers, focus, focusParticipant, selected, setSelected, clearFocus } = useMap()
-  const queue = useQueue({ includeFar: mapLayers.far })
+  const queue = useQueue()
   const { sessions, removeSession, openBooking, setNote } = useSchedule()
   const { name: moderatorName } = useModerators()
   const toast = useToast()

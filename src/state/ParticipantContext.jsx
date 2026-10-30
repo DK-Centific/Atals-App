@@ -45,7 +45,22 @@ function placeByZip(list) {
   return placed.sort((a, b) => (a.distMi ?? Infinity) - (b.distMi ?? Infinity))
 }
 
+// The range from HQ, remembered per browser ('any' for Any distance).
+const RANGE_KEY = 'atlas_range_v1'
+function readRange() {
+  try {
+    const v = localStorage.getItem(RANGE_KEY)
+    if (v === 'any') return null
+    return v && RANGE_OPTIONS.includes(Number(v)) ? Number(v) : QUEUE_RADIUS_MI
+  } catch { return QUEUE_RADIUS_MI }
+}
+
 export function ParticipantProvider({ children }) {
+  const [rangeMi, setRange] = useState(readRange)
+  const setRangeMi = useCallback((mi) => {
+    setRange(mi)
+    try { localStorage.setItem(RANGE_KEY, mi == null ? 'any' : String(mi)) } catch { /* not remembered */ }
+  }, [])
   const cached = useRef(readCache()).current
   const [data, setData] = useState(cached)
   const [fixes, setFixes] = useState({})
@@ -120,7 +135,9 @@ export function ParticipantProvider({ children }) {
     sync,
     syncNow,
     usingSample,
-  }), [data, participants, sync, syncNow, correctAddress])
+    rangeMi,
+    setRangeMi,
+  }), [data, participants, sync, syncNow, correctAddress, rangeMi, setRangeMi])
   return <ParticipantContext.Provider value={value}>{children}</ParticipantContext.Provider>
 }
 
@@ -142,23 +159,30 @@ export function bookingState(sessions, participantId) {
 }
 
 // The queue: active participants with each one's booking state attached.
-// Only the Seattle area is bookable: people within this many miles of HQ (by
-// their map point or ZIP centre). Anyone already booked stays, wherever they are.
+// Bookable means open people within the chosen range from HQ (by their map point
+// or ZIP centre). Anyone already booked stays, wherever they are.
+// QUEUE_RADIUS_MI is the default range, and the fixed Seattle area the tracker counts.
 export const QUEUE_RADIUS_MI = 40
 
 export const inArea = (p) => p.distMi != null && p.distMi <= QUEUE_RADIUS_MI
 
-// includeFar: also list open people outside the area or with no map point (the
-// Map's "Outside 40 mi" switch), so a wrong address can be found and corrected.
-export function useQueue({ includeFar = false } = {}) {
-  const { participants } = useParticipants()
+// The range choices, in miles; null is Any distance, which also lists people with
+// no map point yet, so a wrong address can be found and corrected.
+export const RANGE_OPTIONS = [10, 20, 40, 60, 100, null]
+export const withinRange = (p, mi) => mi == null || (p.distMi != null && p.distMi <= mi)
+export const rangeText = (mi) => (mi == null ? 'at any distance' : `within ${mi} mi`)
+
+// rangeMi: leave it out for the shared range, or pass a number (or null for any).
+export function useQueue({ rangeMi } = {}) {
+  const { participants, rangeMi: shared } = useParticipants()
   const { sessions } = useSchedule()
+  const mi = rangeMi === undefined ? shared : rangeMi
   return useMemo(
     () => participants
       .filter((p) => p.active)
       .map((p) => ({ ...p, ...bookingState(sessions, p.id) }))
-      .filter((p) => includeFar || p.status !== 'open' || inArea(p)),
-    [participants, sessions, includeFar],
+      .filter((p) => p.status !== 'open' || withinRange(p, mi)),
+    [participants, sessions, mi],
   )
 }
 

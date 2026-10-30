@@ -7,7 +7,7 @@ import Collapse from '../../motion/Collapse.jsx'
 import useSlidingPill from '../../motion/useSlidingPill.js'
 import { useToast } from '../../motion/Toast.jsx'
 import { useSchedule } from '../../state/ScheduleContext.jsx'
-import { QUEUE_RADIUS_MI, useQueue } from '../../state/ParticipantContext.jsx'
+import { RANGE_OPTIONS, rangeText, useParticipants, useQueue, withinRange } from '../../state/ParticipantContext.jsx'
 import { participantMiles } from '../../lib/geo.js'
 import { bookingRouteMiles } from '../../lib/mileage.js'
 import { PlusIcon } from '../Icons.jsx'
@@ -27,8 +27,14 @@ const DEFAULTS = {
 // (fixed, so the queue picker hides) and `onBooked`, and supplies its own header.
 export default function BookingPanel({ participant = null, onBooked = null }) {
   const { sessions, addSession, removeSession, openBooking, setNote, triggerRef, draft } = useSchedule()
-  const queue = useQueue()
-  const openQueue = queue.filter((p) => p.status === 'open')
+  const queue = useQueue({ rangeMi: null })
+  const { rangeMi, setRangeMi } = useParticipants()
+  const openAll = queue.filter((p) => p.status === 'open')
+  const openQueue = openAll.filter((p) => withinRange(p, rangeMi))
+  // No one open in range: offer the next range that has someone.
+  const widenTo = openQueue.length ? undefined : RANGE_OPTIONS
+    .filter((mi) => rangeMi != null && (mi == null || mi > rangeMi))
+    .find((mi) => openAll.some((p) => withinRange(p, mi)))
   const panelRef = useRef(null)
   const toast = useToast()
   const [form, setForm] = useState(DEFAULTS)
@@ -180,7 +186,7 @@ export default function BookingPanel({ participant = null, onBooked = null }) {
               value={form.participantId}
               onChange={(e) => pickParticipant(e.target.value)}
             >
-              <option value="">Pick an endorsed participant ({openQueue.length} open within {QUEUE_RADIUS_MI} mi)</option>
+              <option value="">Pick an endorsed participant ({openQueue.length} open {rangeText(rangeMi)})</option>
               {form.participantId && !openQueue.some((p) => p.id === form.participantId) && (
                 <option value={form.participantId}>{form.name}</option>
               )}
@@ -189,6 +195,14 @@ export default function BookingPanel({ participant = null, onBooked = null }) {
               ))}
             </select>
           </label>
+        )}
+        {!participant && widenTo !== undefined && (
+          <span className="atlas-booking-widen atlas-row-in">
+            No one open {rangeText(rangeMi)}.{' '}
+            <button type="button" className="atlas-link" onClick={() => setRangeMi(widenTo)}>
+              Widen to {widenTo == null ? 'any distance' : `${widenTo} mi`}
+            </button>
+          </span>
         )}
         <TextField label="PARTICIPANT" value={form.name} placeholder="Full name" onChange={(v) => set({ name: v, participantId: '', requestId: '' })} />
         <TextField label="LOCATION" value={form.location} placeholder="Address or meeting link" onChange={(v) => set({ location: v })} />
