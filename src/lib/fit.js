@@ -1,5 +1,6 @@
 // Fit scaling (ux-behavior-spec.md section 10). Atlas is designed for 1536 x 864;
-// smaller windows scale the whole UI through the root font size, never above 1.
+// smaller windows scale the whole UI through the root font size, never above 1 and
+// never below 0.9 (so text stays readable); below that the layouts reflow instead.
 // Phones (under 640px) keep 16px and use the stacked phone layout instead.
 
 const BASE_W = 1536
@@ -18,7 +19,7 @@ function hostWindow() {
 
 export function fitScale(w, h) {
   if (w < PHONE) return 1
-  const s = Math.min(1, Math.max(0.8, Math.min(w / BASE_W, h / BASE_H)))
+  const s = Math.min(1, Math.max(0.9, Math.min(w / BASE_W, h / BASE_H)))
   return Math.round(s * 1000) / 1000
 }
 

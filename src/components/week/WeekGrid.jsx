@@ -1,12 +1,11 @@
 import { Fragment } from 'react'
 import { TODAY, toMinutes } from '../../data/schedule.js'
-import { weekOf } from '../../lib/dates.js'
+import { hourLabel, weekOf } from '../../lib/dates.js'
 import { useStagger } from '../../motion/motion.js'
 import { overlaps } from '../../state/ScheduleContext.jsx'
 import CalendarEvent from './CalendarEvent.jsx'
 
-const HOURS = Array.from({ length: 14 }, (_, i) => 8 + i) // 08:00 - 21:00
-const pad = (n) => String(n).padStart(2, '0')
+const HOURS = Array.from({ length: 14 }, (_, i) => 8 + i) // 8 AM - 9 PM
 
 // Greedy lane assignment so overlapping sessions sit side by side.
 function layoutLanes(daySessions) {
@@ -58,7 +57,7 @@ export default function WeekGrid({ sessions, weekDate = TODAY }) {
 
       {HOURS.map((h) => (
         <Fragment key={h}>
-          <div className="atlas-week-hour">{pad(h)}:00</div>
+          <div className="atlas-week-hour">{hourLabel(h)}</div>
           {week.map((d) => (
             <div key={d.date} className="atlas-week-slot">
               {at(d.date, h).map((s) => (

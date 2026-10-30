@@ -8,7 +8,7 @@ import { DARK, LIGHT } from '../lib/emailTemplates/palette.ts'
 import { buildEmail, copyRich, copyText, fillFields, fillSubject, sanitize, tintedLogo, toPlainText } from '../lib/emailTemplates/render.ts'
 import { useTemplateStore } from '../lib/emailTemplates/store.ts'
 import { valuesFor } from '../lib/emailTemplates/values.ts'
-import { longDayLabel } from '../lib/dates.js'
+import { clock12, longDayLabel } from '../lib/dates.js'
 import useSlidingPill from '../motion/useSlidingPill.js'
 import { useToast } from '../motion/Toast.jsx'
 import { useAuth } from '../state/AuthContext.tsx'
@@ -237,7 +237,7 @@ export default function TemplatesView() {
                         <option value="">No booking (show fields to fill in)</option>
                         {options.map((s) => (
                           <option key={s.id} value={s.id}>
-                            {`${longDayLabel(s.date)} · ${s.start} · ${s.name}${s.status === 'cancelled' ? ' (cancelled)' : ''}`}
+                            {`${longDayLabel(s.date)} · ${clock12(s.start)} · ${s.name}${s.status === 'cancelled' ? ' (cancelled)' : ''}`}
                           </option>
                         ))}
                       </select>

@@ -16,14 +16,18 @@ export function HomeGlyph({ stories = 1 }) {
   )
 }
 
-export default function HomeSummary({ home, features = false }) {
+// `stacked` puts the size under the type, for narrow spots like the live card.
+export default function HomeSummary({ home, features = false, stacked = false }) {
   if (!home?.type && !home?.size) return <span className="atlas-detail-muted">No home answers yet</span>
   return (
     <span className="atlas-home-summary-line">
       <span className="atlas-home-summary-main">
         {home.type && <HomeGlyph stories={homeStories(home.type)} />}
-        {[home.type && homeLabel(home.type), home.size].filter(Boolean).join(' · ')}
+        {stacked
+          ? homeLabel(home.type) || home.size
+          : [home.type && homeLabel(home.type), home.size].filter(Boolean).join(' · ')}
       </span>
+      {stacked && home.type && home.size && <span className="atlas-home-summary-features">{home.size}</span>}
       {features && home.features?.length > 0 && <span className="atlas-home-summary-features">{home.features.join(', ')}</span>}
     </span>
   )

@@ -5,10 +5,10 @@ import { READ_URL } from '../lib/oneforma/config.ts'
 // designs: one booked week (Oct 21 - Oct 27, 2024) with Thursday Oct 24 as "today".
 
 export const STATUS = {
-  insession: { label: 'In Session', dayLabel: 'IN SESSION', weekLabel: 'ACTIVE' },
-  booked: { label: 'Booked', dayLabel: 'BOOKED', weekLabel: 'BOOKED' },
-  completed: { label: 'Completed', dayLabel: 'COMPLETED', weekLabel: 'DONE' },
-  cancelled: { label: 'Cancelled', dayLabel: 'CANCELLED', weekLabel: 'CANCEL' },
+  insession: { label: 'In session' },
+  booked: { label: 'Booked' },
+  completed: { label: 'Completed' },
+  cancelled: { label: 'Cancelled' },
 }
 
 

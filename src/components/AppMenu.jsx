@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { TODAY } from '../data/schedule.js'
+import { clock12 } from '../lib/dates.js'
 import { MS } from '../motion/motion.js'
 import usePresence from '../motion/usePresence.js'
 import { isPicked, useFilterGroups, useFilters } from '../state/FilterContext.jsx'
@@ -200,7 +201,7 @@ export default function AppMenu() {
               {today.map((s) => (
                 <button key={s.id} type="button" role="menuitem" className="atlas-menu-item atlas-app-menu-session" onClick={() => goTo(s)}>
                   <StatusDot status={s.status} />
-                  <span className="atlas-app-menu-time">{s.start}</span>
+                  <span className="atlas-app-menu-time">{clock12(s.start)}</span>
                   <span className="atlas-app-menu-name">{s.name}</span>
                 </button>
               ))}

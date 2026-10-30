@@ -9,16 +9,16 @@ const TONE_CLASS = {
 }
 
 const VIEWS = [
-  { path: '/day', label: 'DAY' },
-  { path: '/week', label: 'WEEK' },
-  { path: '/month', label: 'MONTH' },
+  { path: '/day', label: 'Day' },
+  { path: '/week', label: 'Week' },
+  { path: '/month', label: 'Month' },
 ]
 
 // Day / Week / Month switcher: a segmented control whose highlight pill slides
 // to the pressed option at once, then the page transitions to that view.
 // tone="recessed" is the Month header's darker track, tone="dock" the Day view's
-// floating glass dock; wideLabels matches Day/Week letter spacing.
-export default function ViewToggle({ tone = 'surface', wideLabels = true }) {
+// floating glass dock.
+export default function ViewToggle({ tone = 'surface' }) {
   const { pathname } = useLocation()
   const goTo = useViewNavigate()
   const [pending, setPending] = useState(null)
@@ -42,7 +42,7 @@ export default function ViewToggle({ tone = 'surface', wideLabels = true }) {
             className={`atlas-view-tab${on ? ' is-active' : ''}`}
             data-pill-active={on}
             aria-pressed={on}
-            aria-label={`${label.toLowerCase()} view`}
+            aria-label={`${label} view`}
             onClick={() => {
               if (pathname === path || pathname.startsWith(`${path}/`)) return
               setPending(path)
@@ -50,7 +50,7 @@ export default function ViewToggle({ tone = 'surface', wideLabels = true }) {
             }}
           >
             <span className="atlas-view-tab-dot" />
-            <span className={`atlas-eyebrow atlas-view-tab-label${wideLabels ? ' atlas-view-tab-label--wide' : ''}`}>{label}</span>
+            <span className="atlas-view-tab-label">{label}</span>
           </button>
         )
       })}

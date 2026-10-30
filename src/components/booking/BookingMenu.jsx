@@ -3,6 +3,7 @@ import { isLocked } from '../../lib/bookings.js'
 import { MS } from '../../motion/motion.js'
 import usePresence from '../../motion/usePresence.js'
 import { returnFocus } from '../../motion/useFocusTrap.js'
+import { clock12 } from '../../lib/dates.js'
 import { useSchedule } from '../../state/ScheduleContext.jsx'
 
 // Right-click menu on a booking, as in Twilight's calendar: View is always there,
@@ -98,7 +99,7 @@ export default function BookingMenu() {
       onKeyDown={onKeyDown}
       onAnimationEnd={onAnimationEnd}
     >
-      <div className="atlas-eyebrow atlas-menu-title">{session.name} · {session.start}</div>
+      <div className="atlas-eyebrow atlas-menu-title">{session.name} · {clock12(session.start)}</div>
       {items.map((it) => (
         <button
           key={it.mode}

@@ -1,12 +1,16 @@
+import { timeRange } from '../../lib/dates.js'
 import { useModerators } from '../../state/ModeratorContext.jsx'
 import { useParticipant } from '../../state/ParticipantContext.jsx'
+import { useSchedule } from '../../state/ScheduleContext.jsx'
+import { CloseIcon } from '../Icons.jsx'
 import HomeSummary from '../HomeSummary.jsx'
 import { StatusDot } from '../StatusLegend.jsx'
 
-// Hero card for the session currently in progress. The map is opened from the
-// Map tile above it.
-export default function ActiveSessionCard({ session }) {
-  const { label: moderatorLabel } = useModerators()
+// Hero card for an in-session booking, shown when its card in the list is clicked.
+// The map is opened from the Map tile above it.
+export default function ActiveSessionCard({ session, onClose }) {
+  const { openBooking, triggerRef } = useSchedule()
+  const { name: moderatorName } = useModerators()
   const participant = useParticipant(session?.participantId)
   if (!session) return null
 
@@ -20,14 +24,18 @@ export default function ActiveSessionCard({ session }) {
           </svg>
         </div>
 
-        <div className="atlas-eyebrow atlas-live-card-status">
+        <button type="button" className="atlas-live-card-close atlas-icon-btn" aria-label="Hide the live session card" onClick={onClose}>
+          <CloseIcon />
+        </button>
+
+        <div className="atlas-live-card-status">
           <StatusDot status="insession" pulse />
-          IN SESSION • {session.moderator ? `MODERATOR ${moderatorLabel(session.moderator).toUpperCase()}` : 'NEEDS MODERATOR'}
+          In session · {session.moderator ? `with ${moderatorName(session.moderator)}` : 'needs moderator'}
         </div>
 
         <div className="atlas-live-card-name">{session.name}</div>
         <div className="atlas-live-card-time">
-          {session.start} — {session.end} {session.timezone ?? ''}
+          {timeRange(session.start, session.end)} {session.timezone ?? ''}
         </div>
 
         <div className="atlas-live-card-details">
@@ -37,9 +45,18 @@ export default function ActiveSessionCard({ session }) {
           </div>
           <div className="atlas-live-card-detail atlas-live-card-detail--end">
             <div className="atlas-eyebrow">HOME</div>
-            <div className="atlas-live-card-value"><HomeSummary home={participant?.home} /></div>
+            <div className="atlas-live-card-value"><HomeSummary home={participant?.home} stacked /></div>
           </div>
         </div>
+
+        <button
+          type="button"
+          className="atlas-link atlas-live-card-open"
+          aria-haspopup="dialog"
+          onClick={(e) => { triggerRef.current = e.currentTarget; openBooking(session.id) }}
+        >
+          Open booking →
+        </button>
       </div>
     </section>
   )

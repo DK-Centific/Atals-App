@@ -25,8 +25,8 @@ export default function WeekView() {
           <header className="atlas-timeline-header">
             <div>
               <div className="atlas-timeline-title-row">
-                <h1 className="atlas-timeline-title">Atlas Timeline</h1>
-                <span className="atlas-week-range atlas-well-sm">{weekRangeLabel(week).toUpperCase()}</span>
+                <h1 className="atlas-timeline-title">This week</h1>
+                <span className="atlas-title-date">{weekRangeLabel(week)}</span>
               </div>
               <StatusLegend wide sessions={inWeek} />
             </div>

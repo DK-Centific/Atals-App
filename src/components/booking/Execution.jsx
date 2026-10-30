@@ -2,6 +2,7 @@ import { DRY_RUN } from '../../lib/oneforma/config.ts'
 import { QA_STAGE_LABEL, isLinked } from '../../lib/oneforma/events.ts'
 import { OUTBOX_TEXT, OUTBOX_TONE, TONE_CLASS } from '../../lib/oneforma/outboxStatus.ts'
 import { useParticipant } from '../../state/ParticipantContext.jsx'
+import { clock12 } from '../../lib/dates.js'
 import { useSchedule } from '../../state/ScheduleContext.jsx'
 import { useLatestFor, useSync } from '../../state/SyncContext.tsx'
 
@@ -83,7 +84,7 @@ export function ExecutionSection({ session: s }) {
         tone={s.status === 'completed' ? 'ok' : 'wait'}
         value={s.status === 'completed'
           ? `${timeOf(s.actualStart)} – ${timeOf(s.actualEnd)}`
-          : `Started ${timeOf(s.actualStart) || s.start}`}
+          : `Started ${timeOf(s.actualStart) || clock12(s.start)}`}
       />
 
       {s.status === 'completed' && (

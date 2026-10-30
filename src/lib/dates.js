@@ -36,9 +36,32 @@ export const shortDate = (isoDate) => {
 
 export const weekRangeLabel = (week) => `${shortDate(week[0].date)} - ${shortDate(week[6].date)}`
 
+// 12-hour clock for people: '13:05' -> '1:05 PM'.
+export const clock12 = (hhmm) => {
+  if (!hhmm) return ''
+  const [h, m] = hhmm.split(':').map(Number)
+  return `${((h + 11) % 12) + 1}:${String(m).padStart(2, '0')} ${h < 12 ? 'AM' : 'PM'}`
+}
+
+// A time range on one line, AM/PM once when both ends share it: '8:00 – 8:45 AM'.
+export const timeRange = (start, end) => {
+  if (!end) return clock12(start)
+  const sameHalf = (Number(start.slice(0, 2)) < 12) === (Number(end.slice(0, 2)) < 12)
+  return `${sameHalf ? clock12(start).slice(0, -3) : clock12(start)} – ${clock12(end)}`
+}
+
+// An hour on the week rail: 8 -> '8 AM', 13 -> '1 PM'.
+export const hourLabel = (h) => `${((h + 11) % 12) + 1} ${h < 12 ? 'AM' : 'PM'}`
+
 export const longDayLabel = (isoDate) => {
   const d = parse(isoDate)
   return `${DOW_LONG[d.getUTCDay()]}, ${MON_SHORT[d.getUTCMonth()]} ${d.getUTCDate()}`
+}
+
+// The full day for headers: 'Thursday, October 24'.
+export const fullDayLabel = (isoDate) => {
+  const d = parse(isoDate)
+  return `${DOW_LONG[d.getUTCDay()]}, ${MON_LONG[d.getUTCMonth()]} ${d.getUTCDate()}`
 }
 
 export const monthTitle = (year, month) => `${MON_LONG[month]} ${year}`

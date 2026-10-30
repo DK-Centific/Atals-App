@@ -75,7 +75,7 @@ export default function MonthView() {
           </div>
           <div className="atlas-header-tools">
             <FilterMenu />
-            <ViewToggle tone="recessed" wideLabels={false} />
+            <ViewToggle tone="recessed" />
           </div>
         </header>
         <FilterBar shown={monthSessions.filter(matches).length} total={monthSessions.length} />

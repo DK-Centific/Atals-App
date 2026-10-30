@@ -34,7 +34,7 @@ export default function StatusLegend({ statuses = Object.keys(STATUS), wide = fa
   return (
     <div className={`atlas-legend${wide ? ' atlas-legend--wide' : ''}`} role="group" aria-label="Filter by status">
       <span className="atlas-legend-total" aria-label={`${total} sessions`}>
-        <CountUp value={total} className="atlas-legend-count" /> <span className="atlas-legend-total-label">total</span>
+        <CountUp value={total} className="atlas-legend-count" /> <span className="atlas-legend-total-label">{total === 1 ? 'session' : 'sessions'}</span>
       </span>
       {statuses.map((s) => {
         const on = isPicked(picks, 'status', s)
@@ -49,8 +49,9 @@ export default function StatusLegend({ statuses = Object.keys(STATUS), wide = fa
             title={on ? 'Click again to clear' : 'Filters this page'}
             onClick={() => toggle('status', s, 'legend')}
           >
-            <StatusDot status={s} /> {STATUS[s].label}
+            <StatusDot status={s} />
             <CountUp value={counts[s]} className="atlas-legend-count" />
+            {STATUS[s].label.toLowerCase()}
           </button>
         )
       })}
@@ -63,8 +64,9 @@ export default function StatusLegend({ statuses = Object.keys(STATUS), wide = fa
           title={unassignedOn ? 'Click again to clear' : 'Bookings an Admin still has to assign a moderator to'}
           onClick={() => toggle('moderator', UNASSIGNED, 'legend')}
         >
-          <span className="atlas-legend-unassigned-mark" aria-hidden="true" /> Needs moderator
+          <span className="atlas-legend-unassigned-mark" aria-hidden="true" />
           <CountUp value={unassigned} className="atlas-legend-count" />
+          {unassigned === 1 ? 'needs a moderator' : 'need a moderator'}
         </button>
       )}
     </div>

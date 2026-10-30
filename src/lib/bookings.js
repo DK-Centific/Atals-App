@@ -5,7 +5,7 @@
 // optional at booking; an Admin assigns one once the booking is ready.
 
 import { TODAY, toMinutes } from '../data/schedule.js'
-import { longDayLabel } from './dates.js'
+import { longDayLabel, timeRange } from './dates.js'
 
 export const isLocked = (status) => status === 'completed' || status === 'cancelled'
 
@@ -83,4 +83,4 @@ export function findConflict(sessions, slot, ignoreId) {
 export const conflictMessage = (s, name) =>
   `${name(s.moderator)} already has ${s.name} ${s.start} – ${s.end} that day.`
 
-export const slotLabel = ({ date, start, end }) => `${longDayLabel(date)} · ${start} – ${end}`
+export const slotLabel = ({ date, start, end }) => `${longDayLabel(date)} · ${timeRange(start, end)}`

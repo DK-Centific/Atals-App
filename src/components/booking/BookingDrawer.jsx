@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { STATUS, TODAY } from '../../data/schedule.js'
 import { billableHours, formatHours, isBillable, sessionHours } from '../../lib/billing.js'
-import { longDayLabel } from '../../lib/dates.js'
+import { longDayLabel, timeRange } from '../../lib/dates.js'
 import {
   checkDetails, checkTimes, conflictMessage, displayNames, findConflict, isLocked, needsModerator, slotLabel, withEnd, withStart,
 } from '../../lib/bookings.js'
@@ -877,9 +877,9 @@ function DaySheet({ date }) {
             <StatusDot status={s.status} pulse={s.status === 'insession'} />
             <div className="atlas-day-item-text">
               <span className="atlas-day-item-name">{s.name}</span>
-              <span className="atlas-day-item-meta">{s.start} – {s.end} · {moderatorLabel(s.moderator)}</span>
+              <span className="atlas-day-item-meta">{timeRange(s.start, s.end)} · {moderatorLabel(s.moderator)}</span>
             </div>
-            <span className="atlas-eyebrow atlas-day-item-status">{STATUS[s.status].weekLabel}</span>
+            <span className="atlas-day-item-status">{STATUS[s.status].label}</span>
           </div>
         ))}
       </div>

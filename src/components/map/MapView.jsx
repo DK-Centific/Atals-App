@@ -7,7 +7,7 @@ import { firstName } from '../../data/moderators.js'
 import { useModerators } from '../../state/ModeratorContext.jsx'
 import { HQ, boxAround, participantMiles } from '../../lib/geo.js'
 import { etaFrom, formatDrive, routeBetween } from '../../lib/routing.js'
-import { longDayLabel } from '../../lib/dates.js'
+import { clock12, longDayLabel } from '../../lib/dates.js'
 import { prefersReducedMotion } from '../../motion/motion.js'
 import usePresence from '../../motion/usePresence.js'
 import useFocusTrap, { returnFocus } from '../../motion/useFocusTrap.js'
@@ -357,7 +357,7 @@ function LiveMap({ onClose }) {
         return
       }
       setSelected(p.id)
-      drawRoute(p, `${who.toUpperCase()} · ${s.status === 'insession' ? 'ON SITE' : `DUE ${s.start}`}`)
+      drawRoute(p, `${who.toUpperCase()} · ${s.status === 'insession' ? 'ON SITE' : `DUE ${clock12(s.start)}`}`)
     }
     if (map.isStyleLoaded()) go()
     else map.once('style.load', go)
@@ -478,7 +478,7 @@ function LiveMap({ onClose }) {
 }
 
 function ParticipantDot({ participant: p, revealed, selected, onPick }) {
-  const when = p.session ? `${p.session.date === TODAY ? 'Today' : longDayLabel(p.session.date)} ${p.session.start}` : null
+  const when = p.session ? `${p.session.date === TODAY ? 'Today' : longDayLabel(p.session.date)} ${clock12(p.session.start)}` : null
   return (
     <button
       type="button"
@@ -772,7 +772,7 @@ function InfoTile({ participant: p, trip, onRoute, onDismiss, onBook }) {
           <div className="atlas-map-detail-assigned">
             <div className="atlas-eyebrow atlas-map-detail-label">{s ? 'BOOKING' : 'ENDORSED'}</div>
             <div className="atlas-map-detail-value atlas-map-detail-value--accent">
-              {s ? `${s.date === TODAY ? 'Today' : longDayLabel(s.date)} ${s.start} · ${moderatorLabel(s.moderator)}` : (p.joinTime?.slice(0, 10) ?? '—')}
+              {s ? `${s.date === TODAY ? 'Today' : longDayLabel(s.date)} ${clock12(s.start)} · ${moderatorLabel(s.moderator)}` : (p.joinTime?.slice(0, 10) ?? '—')}
             </div>
           </div>
         </div>

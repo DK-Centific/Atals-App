@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { TODAY } from '../../data/schedule.js'
-import { addDays, longDayLabel, weekOf, weekRangeLabel } from '../../lib/dates.js'
+import { addDays, longDayLabel, timeRange, weekOf, weekRangeLabel } from '../../lib/dates.js'
 import { activeBookingFor, checkDetails, checkTimes, conflictMessage, displayNames, findConflict, slotLabel, withEnd, withStart } from '../../lib/bookings.js'
 import Collapse from '../../motion/Collapse.jsx'
 import useSlidingPill from '../../motion/useSlidingPill.js'
@@ -113,7 +113,7 @@ export default function BookingPanel({ participant = null, onBooked = null }) {
       ...(form.participantId ? { participantId: form.participantId, requestId: form.requestId } : {}),
       ...(miles ?? {}),
     })
-    const summary = `${longDayLabel(form.date)} · ${form.start} – ${form.end} · ${moderatorLabel(form.moderator)}`
+    const summary = `${longDayLabel(form.date)} · ${timeRange(form.start, form.end)} · ${moderatorLabel(form.moderator)}`
     if (onBooked) {
       onBooked(created, summary)
       return
@@ -178,7 +178,7 @@ export default function BookingPanel({ participant = null, onBooked = null }) {
         {!participant && (
           <label className="atlas-field">
             <span className="atlas-booking-queue-head">
-              <span className="atlas-eyebrow">FROM ONEFORMA QUEUE</span>
+              <span className="atlas-eyebrow">CHOOSE A PARTICIPANT</span>
               <QueueSyncStatus />
             </span>
             <select
@@ -226,7 +226,7 @@ export default function BookingPanel({ participant = null, onBooked = null }) {
 
       <div className="atlas-booking-moderators">
         <div className="atlas-booking-moderators-head">
-          <span className="atlas-eyebrow">MODERATOR · OPTIONAL</span>
+          <span className="atlas-eyebrow">MODERATOR (OPTIONAL)</span>
           {isAdmin && <Link to="/admin/users" className="atlas-moderator-create atlas-link">MANAGE</Link>}
         </div>
         {!isAdmin && <p className="atlas-booking-moderators-hint">Leave it Unassigned if you don’t know yet. An Admin assigns one once the booking is ready.</p>}
@@ -236,7 +236,7 @@ export default function BookingPanel({ participant = null, onBooked = null }) {
   )
   const footer = (
     <div className="atlas-booking-footer">
-      <button type="button" className="atlas-btn-primary" onClick={book}>Book Session</button>
+      <button type="button" className="atlas-btn-primary" onClick={book}>Book session</button>
       <p className="atlas-booking-foot-hint">Nothing is emailed yet. You choose who to email once it’s booked.</p>
     </div>
   )

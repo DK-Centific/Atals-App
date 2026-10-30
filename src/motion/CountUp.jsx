@@ -30,7 +30,8 @@ export default function CountUp({ value, className = '' }) {
     const t0 = performance.now()
     let raf = 0
     const tick = (now) => {
-      const t = Math.min(1, (now - t0) / MS.countUp)
+      // A frame can be stamped just before t0; clamp so it never counts below the start.
+      const t = Math.min(1, Math.max(0, (now - t0) / MS.countUp))
       const v = Math.round(from + (value - from) * ease(t))
       shown.current = v
       setDisplay(v)

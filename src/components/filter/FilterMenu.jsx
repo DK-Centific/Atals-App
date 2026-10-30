@@ -43,7 +43,8 @@ export default function FilterMenu({ before = null, beforeLabel = '' }) {
     if (!open) return undefined
     const place = () => {
       const r = triggerRef.current.getBoundingClientRect()
-      setPos({ top: r.bottom + 12, right: Math.max(8, window.innerWidth - r.right) })
+      // Short windows: the panel stops above the bottom edge and its body scrolls.
+      setPos({ top: r.bottom + 12, right: Math.max(8, window.innerWidth - r.right), maxHeight: window.innerHeight - r.bottom - 28 })
     }
     place()
     window.addEventListener('resize', place)
