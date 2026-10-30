@@ -197,23 +197,18 @@ function useLibreMap(containerRef) {
   return { map, baseZoom, tiles }
 }
 
-// How far out dots show: about a mile at the opening zoom, doubling with each
-// zoom level out, so more of the queue appears as you zoom out.
-function useRevealMiles(map, baseZoom) {
-  const [miles, setMiles] = useState(START_MILES)
+// Which dots show: everyone inside the part of the map on screen, so panning or
+// zooming out brings more of the queue in. Updated when the map comes to rest.
+function useViewBounds(map) {
+  const [bounds, setBounds] = useState(null)
   useEffect(() => {
-    if (!map || baseZoom == null) return undefined
-    let raf = 0
-    const update = () => {
-      raf = 0
-      setMiles(START_MILES * 2 ** (baseZoom - map.getZoom()))
-    }
-    const onZoom = () => { if (!raf) raf = requestAnimationFrame(update) }
+    if (!map) return undefined
+    const update = () => setBounds(map.getBounds())
     update()
-    map.on('zoom', onZoom)
-    return () => { map.off('zoom', onZoom); cancelAnimationFrame(raf) }
-  }, [map, baseZoom])
-  return miles
+    map.on('moveend', update)
+    return () => { map.off('moveend', update) }
+  }, [map])
+  return useCallback((p) => !bounds || bounds.contains([p.lng, p.lat]), [bounds])
 }
 
 // MapLibre markers whose contents React renders through portals.
@@ -260,7 +255,7 @@ function moderatorTarget(sessions, email) {
 function LiveMap({ onClose }) {
   const containerRef = useRef(null)
   const { map, baseZoom, tiles } = useLibreMap(containerRef)
-  const revealMiles = useRevealMiles(map, baseZoom)
+  const inView = useViewBounds(map)
   const { layers: mapLayers, focus, focusParticipant, selected, setSelected, clearFocus } = useMap()
   const queue = useQueue({ includeFar: mapLayers.far })
   const { sessions, removeSession, openBooking, setNote } = useSchedule()
@@ -378,7 +373,7 @@ function LiveMap({ onClose }) {
   }
   const zoomBy = (d) => map?.easeTo({ zoom: map.getZoom() + d, duration: prefersReducedMotion() ? 0 : 300 })
 
-  const inReach = shown.filter((p) => p.distMi != null && p.distMi <= revealMiles)
+  const inReach = shown.filter((p) => p.distMi != null && inView(p))
   const selectedItem = queue.find((p) => p.id === selected) ?? null
   const bookingItem = queue.find((p) => p.id === booking) ?? null
 
@@ -420,7 +415,7 @@ function LiveMap({ onClose }) {
       {queue.map((p) => {
         const host = hosts.get(p.id)
         if (!host) return null
-        const on = p.distMi != null && visible(p) && (p.distMi <= revealMiles || p.id === selected)
+        const on = p.distMi != null && visible(p) && (inView(p) || p.id === selected)
         return createPortal(
           <ParticipantDot
             participant={p}
@@ -459,8 +454,8 @@ function LiveMap({ onClose }) {
 
       <div className={`atlas-map-zoom-status${inReach.length ? ' is-on' : ''}`} role="status" aria-live="polite">
         <span key={`${inReach.length}-${shown.length}`} className="atlas-eyebrow atlas-map-zoom-status-text atlas-status-line">
-          {inReach.length} OF {shown.length} IN REACH · {revealMiles < 9.5 ? `${revealMiles.toFixed(1)} MI` : `${Math.round(revealMiles)} MI`}
-          {inReach.length < shown.length ? ' · ZOOM OUT FOR MORE' : ''}
+          {inReach.length} OF {shown.length} IN VIEW
+          {inReach.length < shown.length ? ' · MOVE OR ZOOM OUT FOR MORE' : ''}
         </span>
       </div>
       {tiles === 'offline' && (
