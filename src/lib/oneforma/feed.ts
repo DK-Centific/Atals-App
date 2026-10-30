@@ -22,6 +22,11 @@ const relationKey = (r: Pick<ProjectUserRelation, 'projectId' | 'userId' | 'requ
 const text = (v: unknown): string | null => (typeof v === 'string' && v.trim() ? v.trim() : null)
 // IDs may arrive as numbers in malformed messages; only strings are trusted.
 const id = (v: unknown): string | null => (typeof v === 'string' && v.trim() ? v.trim() : null)
+// A coordinate from the read flow: SharePoint may send it as a number or as text.
+const coord = (v: unknown): number | null => {
+  const n = typeof v === 'number' ? v : typeof v === 'string' && v.trim() ? Number(v) : NaN
+  return Number.isFinite(n) ? n : null
+}
 
 export function emptyStats(): FeedStats {
   return { messages: 0, duplicates: 0, items: 0, otherProject: 0, stale: 0, removed: 0, malformed: 0 }
@@ -86,11 +91,15 @@ function toParticipant(r: ParticipantRow, coords: Coords): Participant {
   const corrected = fixedAddress || fixedZip
   const ofAddress = text(r.address) ?? [text(r.city), text(r.state)].filter(Boolean).join(', ')
   const ofZip = text(r.postalCode == null ? null : String(r.postalCode))
-  const geo = Number.isFinite(r.geoLat) && Number.isFinite(r.geoLng) ? { lat: r.geoLat as number, lng: r.geoLng as number } : null
+  const geoLat = coord(r.geoLat)
+  const geoLng = coord(r.geoLng)
+  const ofLat = coord(r.lat)
+  const ofLng = coord(r.lng)
+  const geo = geoLat != null && geoLng != null ? { lat: geoLat, lng: geoLng } : null
   const point = corrected
     ? geo
-    : Number.isFinite(r.lat) && Number.isFinite(r.lng)
-      ? { lat: r.lat as number, lng: r.lng as number }
+    : ofLat != null && ofLng != null
+      ? { lat: ofLat, lng: ofLng }
       : geo ?? coords[r.userId] ?? null
   // Verified first + last name first; OneForma's fullName is only the Tools name (often a
   // username) where it couldn't verify the split, so it is the fallback.
