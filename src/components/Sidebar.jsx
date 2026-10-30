@@ -1,6 +1,6 @@
 import { useLocation } from 'react-router-dom'
 import {
-  CalendarIcon, CalendarSquareIcon, DashboardIcon, LogoIcon, ParticipantsIcon, TeamsIcon,
+  CalendarIcon, CalendarSquareIcon, DashboardIcon, LogoIcon, MailIcon, ParticipantsIcon, TeamsIcon,
 } from './Icons.jsx'
 import AccountMenu from './AccountMenu.jsx'
 import RefreshRailButton from './RefreshRailButton.jsx'
@@ -10,18 +10,19 @@ import useViewNavigate from '../motion/useViewNavigate.js'
 import { useRole } from '../state/RoleContext.jsx'
 
 // The Admin app's rail. Every item is a place in the app; what shows depends on
-// the role (Scheduler: Schedule only; Admin: Schedule, Checklist, Users, Tracker).
+// the role (Scheduler: Schedule and Email templates; Admin: everything).
 // The Month design orders the same items differently (`variant`).
 const ITEMS = {
   schedule: { title: 'Schedule', path: '/day', match: ['/day', '/week', '/month'], roles: ['admin', 'scheduler'] },
+  templates: { title: 'Email templates', path: '/templates', match: ['/templates'], roles: ['admin', 'scheduler'], Icon: MailIcon },
   checklist: { title: 'Checklist', path: '/checklist', match: ['/checklist'], roles: ['admin'], Icon: TeamsIcon },
   users: { title: 'Users', path: '/admin/users', match: ['/admin/users'], roles: ['admin'], Icon: ParticipantsIcon },
   tracker: { title: 'Production tracker', path: '/admin/tracker', match: ['/admin/tracker'], roles: ['admin'], Icon: DashboardIcon },
 }
 
 const ORDER = {
-  default: ['schedule', 'checklist', 'users', 'tracker'],
-  month: ['schedule', 'tracker', 'checklist', 'users'],
+  default: ['schedule', 'templates', 'checklist', 'users', 'tracker'],
+  month: ['schedule', 'templates', 'tracker', 'checklist', 'users'],
 }
 
 export default function Sidebar({ variant = 'default' }) {

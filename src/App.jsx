@@ -6,6 +6,7 @@ import MonthView from './views/MonthView.jsx'
 import ChecklistView from './views/ChecklistView.jsx'
 import UsersView from './views/UsersView.jsx'
 import TrackerView from './views/TrackerView.jsx'
+import TemplatesView from './views/TemplatesView.jsx'
 import BookingDrawer from './components/booking/BookingDrawer.jsx'
 import BookingMenu from './components/booking/BookingMenu.jsx'
 import AppMenu, { useAppMenuTrigger } from './components/AppMenu.jsx'
@@ -17,10 +18,12 @@ const TITLES = {
   '/day/map': 'Atlas Scheduling | Map View',
   '/week': 'Atlas Scheduling | Week View',
   '/month': 'Atlas Scheduling | Month View',
+  '/templates': 'Atlas Scheduling | Email templates',
 }
 
 // One URL for every role; the role picks the landing screen and what else is
-// reachable. Moderator: Checklist. Scheduler: Booking. Admin: Booking, Users, Tracker, Checklist.
+// reachable. Moderator: Checklist. Scheduler: Booking and Email templates.
+// Admin: Booking, Email templates, Users, Tracker, Checklist.
 export default function App() {
   const { pathname } = useLocation()
   const { canBook, isAdmin, landing } = useRole()
@@ -40,6 +43,7 @@ export default function App() {
         <Route path="/day/*" element={canBook ? <DayView /> : home} />
         <Route path="/week" element={canBook ? <WeekView /> : home} />
         <Route path="/month" element={canBook ? <MonthView /> : home} />
+        <Route path="/templates" element={canBook ? <TemplatesView /> : home} />
         <Route path="/admin/users" element={isAdmin ? <UsersView /> : home} />
         <Route path="/admin/tracker" element={isAdmin ? <TrackerView /> : home} />
         <Route path="*" element={home} />
