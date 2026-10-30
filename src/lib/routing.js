@@ -1,16 +1,14 @@
-// Road routes from HQ for the map's "Route from HQ", from our own self-hosted
-// OSRM server (driving profile, see osrm/README.md) at VITE_ROUTING_URL, so
-// participant coordinates never leave our servers.
-// Without VITE_ROUTING_URL, the public OSRM demo is used only while the
-// OneForma feed is sample data; with real data and no server configured, the
-// map shows a straight-line estimate instead of sending coordinates out.
-// If routing can't be reached, it falls back to that estimate and says so.
+// Road routes from HQ for the map's "Route from HQ", from an OSRM server
+// (driving profile). VITE_ROUTING_URL points at our own server (see
+// osrm/README.md) once there is one. Until then the public OSRM server is used
+// for real data too (DswK approved 2026-10-30, pending InfoSec): only the two
+// map points are sent, never names or IDs.
+// If routing can't be reached, it falls back to a straight-line estimate and says so.
 
 import { arcBetween, milesBetween } from './geo.js'
-import { usingSample } from './oneforma/participants.ts'
 
-const PUBLIC_DEMO = 'https://router.project-osrm.org'
-const BASE = (import.meta.env.VITE_ROUTING_URL || (usingSample ? PUBLIC_DEMO : '')).replace(/\/$/, '')
+const PUBLIC_OSRM = 'https://router.project-osrm.org'
+const BASE = (import.meta.env.VITE_ROUTING_URL || PUBLIC_OSRM).replace(/\/$/, '')
 const TIMEOUT_MS = 6000
 const METERS_PER_MILE = 1609.344
 // Fallback guesses: roads run ~1.35x the straight line, ~24 mph average around Redmond.

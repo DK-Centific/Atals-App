@@ -26,6 +26,8 @@ or network level if it is reachable from the internet.
 
 ## Without a server
 
-With mock OneForma data and no `VITE_ROUTING_URL`, the app uses the public
-OSRM demo for review. With real data and no server set, it never sends
-coordinates out: it shows a dashed straight-line estimate instead.
+With no `VITE_ROUTING_URL`, Atlas uses the public OSRM server
+(router.project-osrm.org). Only the HQ and participant map points are sent,
+no names or IDs (approved by DswK 2026-10-30, pending InfoSec). If InfoSec
+says no, set `VITE_ROUTING_URL` to our own server. If routing can't be
+reached, the map shows a dashed straight-line estimate.
