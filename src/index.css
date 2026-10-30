@@ -2565,3 +2565,9 @@ button:disabled::after { display: none; }
     .atlas-home-summary { @apply items-center w-full; }
     .atlas-home-house { @apply w-36; }
 }
+
+/* A participant's home in a line (where Protocol used to be): small house, type, size. */
+.atlas-home-summary-line { @apply inline-flex flex-col gap-1 min-w-0; }
+.atlas-home-summary-main { @apply inline-flex items-center gap-2; }
+.atlas-home-summary-features { @apply text-xs text-[var(--text-secondary)]; }
+.atlas-home-glyph { @apply w-4 h-4 flex-shrink-0; fill: none; stroke: var(--accent); stroke-width: 1.4; stroke-linejoin: round; stroke-linecap: round; }

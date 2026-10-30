@@ -4,7 +4,7 @@ import { UNASSIGNED } from '../data/moderators.js'
 import { needsModerator } from '../lib/bookings.js'
 import { matches } from '../lib/filters.js'
 import CountUp from '../motion/CountUp.jsx'
-import { isPicked, useFilters } from '../state/FilterContext.jsx'
+import { isPicked, useFilters, useHomeOf } from '../state/FilterContext.jsx'
 
 export const StatusDot = ({ status, pulse = false }) => (
   <div className={`atlas-status-dot atlas-status-dot--${status}${pulse ? ' atlas-pulse' : ''}`} />
@@ -16,18 +16,19 @@ export const StatusDot = ({ status, pulse = false }) => (
 // the other counts to 0. `sessions` is the view's whole list before filtering.
 export default function StatusLegend({ statuses = Object.keys(STATUS), wide = false, sessions = [] }) {
   const { picks, toggle } = useFilters()
+  const homeOf = useHomeOf()
   const others = useMemo(() => picks.filter((p) => p.group !== 'status'), [picks])
   const counts = useMemo(() => {
     const c = Object.fromEntries(statuses.map((k) => [k, 0]))
-    for (const item of sessions) if (item.status in c && matches(others, item)) c[item.status] += 1
+    for (const item of sessions) if (item.status in c && matches(others, { ...item, home: homeOf(item) })) c[item.status] += 1
     return c
-  }, [sessions, others, statuses])
+  }, [sessions, others, statuses, homeOf])
   const total = statuses.reduce((n, k) => n + counts[k], 0)
   // Live bookings an Admin still has to staff. Follows every pick but the moderator ones.
   const unassigned = useMemo(() => {
     const rest = picks.filter((p) => p.group !== 'moderator')
-    return sessions.filter((s) => needsModerator(s) && matches(rest, s)).length
-  }, [sessions, picks])
+    return sessions.filter((s) => needsModerator(s) && matches(rest, { ...s, home: homeOf(s) })).length
+  }, [sessions, picks, homeOf])
   const unassignedOn = isPicked(picks, 'moderator', UNASSIGNED)
 
   return (

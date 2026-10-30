@@ -1,4 +1,5 @@
 import { STATUS } from '../../data/schedule.js'
+import { HOME_TYPES, homeKey, normHomeText } from '../../lib/home.js'
 import CountUp from '../../motion/CountUp.jsx'
 import { StatusDot } from '../StatusLegend.jsx'
 
@@ -8,16 +9,14 @@ import { StatusDot } from '../StatusLegend.jsx'
 // answer goes to "Other", shown only when someone has it. Under each house, the
 // size (Q15) and features (Q16) of the people in that card.
 
-const norm = (s) => (s ?? '').toLowerCase().replace(/\s+/g, ' ').trim()
+const norm = normHomeText
 
-const TYPES = [
-  { key: 'multi', label: 'Single-family Multi-story', stories: 2 },
-  { key: 'single', label: 'Single-family Single-story', stories: 1 },
-]
+// The two acceptable answers, as cards in this order (full OneForma wording as the label).
+const TYPES = HOME_TYPES.map((t) => ({ key: t.id, label: t.full, stories: t.stories }))
 const SIZES = ['less than 150 sq. m.', '150-200 sq. m.', 'more than 200 sq. m.']
 const FEATURES = ['L-shape', 'Open Plan', 'Curved Walls', 'Mirrors', 'Glass', 'Stairs']
 
-const typeKey = (type) => TYPES.find((t) => norm(t.label) === norm(type))?.key ?? 'other'
+const typeKey = (type) => homeKey(type) ?? 'other'
 
 /**
  * people: everyone counted (in scope), each with `home` and `state`

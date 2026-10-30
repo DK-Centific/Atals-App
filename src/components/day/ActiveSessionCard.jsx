@@ -1,10 +1,13 @@
 import { useModerators } from '../../state/ModeratorContext.jsx'
+import { useParticipant } from '../../state/ParticipantContext.jsx'
+import HomeSummary from '../HomeSummary.jsx'
 import { StatusDot } from '../StatusLegend.jsx'
 
 // Hero card for the session currently in progress. The map is opened from the
 // Map tile above it.
 export default function ActiveSessionCard({ session }) {
   const { label: moderatorLabel } = useModerators()
+  const participant = useParticipant(session?.participantId)
   if (!session) return null
 
   return (
@@ -33,8 +36,8 @@ export default function ActiveSessionCard({ session }) {
             <div className="atlas-live-card-value">{session.location}</div>
           </div>
           <div className="atlas-live-card-detail atlas-live-card-detail--end">
-            <div className="atlas-eyebrow">PROTOCOL</div>
-            <div className="atlas-live-card-value">{session.protocol || 'Standard'}</div>
+            <div className="atlas-eyebrow">HOME</div>
+            <div className="atlas-live-card-value"><HomeSummary home={participant?.home} /></div>
           </div>
         </div>
       </div>

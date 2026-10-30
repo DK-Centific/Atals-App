@@ -4,8 +4,10 @@
 
 import { STATUS } from '../data/schedule.js'
 import { UNASSIGNED, firstName } from '../data/moderators.js'
+import { HOME_TYPES } from './home.js'
 
-// Status is fixed; Moderator lists Unassigned, then the active moderators (useFilterGroups).
+// Status is fixed; Moderator lists Unassigned, then the active moderators (useFilterGroups);
+// Home type is the participant's OneForma answer (the session's value comes from useHomeOf).
 export const filterGroups = (moderators) => [
   {
     id: 'status',
@@ -19,6 +21,11 @@ export const filterGroups = (moderators) => [
       { id: UNASSIGNED, label: 'Unassigned', title: 'Bookings waiting for an Admin to assign a moderator' },
       ...moderators.map((m) => ({ id: m.email, label: firstName(m), title: m.displayName })),
     ],
+  },
+  {
+    id: 'home',
+    label: 'Home type',
+    options: HOME_TYPES.map((t) => ({ id: t.id, label: t.label, title: t.full })),
   },
 ]
 
@@ -39,7 +46,8 @@ const byGroup = (picks) => {
 const valueOf = (item, group) =>
   group === 'moderator' && item.moderator === '' ? UNASSIGNED : item[group]
 
-// `item` is a session, or a Month history chip ({ status }) with no moderator.
+// `item` is a session (with `home` resolved to a key), or a Month history chip ({ status })
+// with no moderator or home, which any moderator or home pick leaves out.
 export function matches(picks, item) {
   for (const [group, values] of byGroup(picks)) {
     if (!values.has(valueOf(item, group))) return false

@@ -1,6 +1,8 @@
 import { createContext, useCallback, useContext, useDeferredValue, useMemo, useState } from 'react'
 import { filterGroups, matches } from '../lib/filters.js'
+import { homeKey } from '../lib/home.js'
 import { useModerators } from './ModeratorContext.jsx'
+import { useParticipants } from './ParticipantContext.jsx'
 
 // One filter state for the page session, shared by Day, Week and Month. The
 // filter menu and the status legend read and write the same picks; each pick
@@ -39,7 +41,17 @@ export function useFilteredPicks() {
   return useDeferredValue(picks)
 }
 
+/** A session's home-type key, from its participant's OneForma answer (null: no answer). */
+export function useHomeOf() {
+  const { participants } = useParticipants()
+  return useMemo(() => {
+    const byId = new Map(participants.map((p) => [p.id, homeKey(p.home?.type)]))
+    return (item) => (item.participantId ? byId.get(item.participantId) ?? null : undefined)
+  }, [participants])
+}
+
 export function useMatches() {
   const picks = useFilteredPicks()
-  return useCallback((item) => matches(picks, item), [picks])
+  const homeOf = useHomeOf()
+  return useCallback((item) => matches(picks, { ...item, home: homeOf(item) }), [picks, homeOf])
 }

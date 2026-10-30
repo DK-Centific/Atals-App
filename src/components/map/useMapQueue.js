@@ -1,6 +1,7 @@
 import { useCallback, useMemo } from 'react'
 import { inRange } from '../../lib/dateRange.js'
 import { matches } from '../../lib/filters.js'
+import { homeKey } from '../../lib/home.js'
 import { useFilteredPicks } from '../../state/FilterContext.jsx'
 import { useMap } from '../../state/MapContext.jsx'
 import { useQueue } from '../../state/ParticipantContext.jsx'
@@ -18,7 +19,7 @@ export default function useMapQueue() {
 
   const visible = useCallback((p) => layers[p.status]
     && (!p.session || inRange(range, p.session.date))
-    && matches(picks, { status: p.status, moderator: p.session?.moderator }), [layers, range, picks])
+    && matches(picks, { status: p.status, moderator: p.session?.moderator, home: homeKey(p.home?.type) }), [layers, range, picks])
 
   const onLayers = useMemo(() => queue.filter((p) => layers[p.status]), [queue, layers])
   const shown = useMemo(() => onLayers.filter(visible), [onLayers, visible])

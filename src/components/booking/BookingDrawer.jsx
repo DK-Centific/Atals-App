@@ -16,7 +16,8 @@ import { CloseIcon } from '../Icons.jsx'
 import { StatusDot } from '../StatusLegend.jsx'
 import { ModeratorPicker, TextField, TimeField } from './Fields.jsx'
 import { useModerators } from '../../state/ModeratorContext.jsx'
-import { useParticipants } from '../../state/ParticipantContext.jsx'
+import { useParticipant, useParticipants } from '../../state/ParticipantContext.jsx'
+import HomeSummary from '../HomeSummary.jsx'
 import { useRole } from '../../state/RoleContext.jsx'
 import { MILES_SOURCE, formatMi, roundTrip, useOneWayMiles } from '../../lib/mileage.js'
 import { ExecutionSection, OneFormaLine } from './Execution.jsx'
@@ -209,6 +210,7 @@ function BookingSheet({ session, mode }) {
 /* ---------- View ---------- */
 
 function BookingDetails({ session: s }) {
+  const homeParticipant = useParticipant(s.participantId)
   const { openBooking, startSession, completeSession, restoreSession, setNote, sessions } = useSchedule()
   const toast = useToast()
   const locked = isLocked(s.status)
@@ -273,7 +275,7 @@ function BookingDetails({ session: s }) {
           <Detail label="PHONE">
             {s.phone ? <a className="atlas-detail-link" href={`tel:${s.phone}`}>{s.phone}</a> : '—'}
           </Detail>
-          <Detail label="PROTOCOL">{s.protocol || 'Standard'}</Detail>
+          <Detail label="HOME" wide><HomeSummary home={homeParticipant?.home} features /></Detail>
           <Detail label="NOTES" wide>{s.notes || '—'}</Detail>
         </dl>
 
@@ -632,7 +634,6 @@ function EditForm({ session }) {
         <TextField label="EMAIL" type="email" value={form.email} onChange={(v) => set({ email: v })} />
         <TextField label="PHONE" type="tel" value={form.phone} onChange={(v) => set({ phone: v })} />
       </div>
-      <TextField label="PROTOCOL" value={form.protocol} placeholder="Standard" onChange={(v) => set({ protocol: v })} />
       <TextField label="NOTES" multiline value={form.notes} onChange={(v) => set({ notes: v })} />
     </FormShell>
   )
