@@ -781,6 +781,13 @@ function InfoTile({ participant: p, trip, onRoute, onDismiss, onBook }) {
             </div>
           </div>
         </div>
+        {p.home && (
+          <div className="atlas-map-info-home">
+            <div className="atlas-eyebrow atlas-map-detail-label">HOME</div>
+            <div className="atlas-map-detail-value">{[p.home.type, p.home.size].filter(Boolean).join(' · ') || '—'}</div>
+            {p.home.features.length > 0 && <div className="atlas-map-info-home-features">{p.home.features.join(', ')}</div>}
+          </div>
+        )}
       </div>
 
       {trip && <TripPanel trip={trip} />}

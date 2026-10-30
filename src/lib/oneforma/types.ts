@@ -56,6 +56,11 @@ export interface RelationFields {
   city?: string | null
   jobName?: string | null
   joinTime?: string | null
+  /** Screening answers Atlas keeps (OneForma questions 132, 1835090119425025, 1835090172828673). */
+  homeType?: string | null
+  homeSize?: string | null
+  /** Every selected feature, joined with "; ". */
+  homeFeatures?: string | null
   taskPlatform?: string | null
   demographicQuestionAnswer?: DemographicAnswer[] | null
 }
@@ -96,6 +101,7 @@ export interface Participant {
   state: string | null
   locale: string | null
   joinTime: string | null
+  home: { type: string | null; size: string | null; features: string[] } | null
   /** false after a `remove`: kept for history, never bookable. */
   active: boolean
   lat: number | null

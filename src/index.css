@@ -1912,6 +1912,10 @@ button:disabled::after { display: none; }
 .atlas-address-fix-actions { @apply col-span-2 flex items-center gap-4; }
 .atlas-queue-dot--far { background: var(--text-muted); }
 
+/* Home screening answers on the map's info tile. */
+.atlas-map-info-home { @apply mt-4 pt-4 border-t border-[rgba(255,255,255,0.05)]; }
+.atlas-map-info-home-features { @apply mt-1 text-xs text-[var(--text-secondary)] leading-snug; }
+
 /* Release number: at the foot of the side rail and on the sign-in page. */
 .atlas-version { @apply text-[10px] leading-tight text-center text-[var(--text-secondary)] tabular-nums select-text; }
 .atlas-sidebar-version { @apply -mt-3 opacity-70; }

@@ -69,6 +69,14 @@ export function fromRows(rows: readonly ParticipantRow[], projectId: string): Pa
     .map((r) => toParticipant(r, {})))
 }
 
+// The three home screening answers, when the read flow has them.
+function homeOf(r: ParticipantRow): Participant['home'] {
+  const type = text(r.homeType)
+  const size = text(r.homeSize)
+  const features = (text(r.homeFeatures) ?? '').split(';').map((f) => f.trim()).filter(Boolean)
+  return type || size || features.length ? { type, size, features } : null
+}
+
 function toParticipant(r: ParticipantRow, coords: Coords): Participant {
   // A corrected address wins; OneForma's map point belongs to its own address, so it's
   // dropped. The Census geocoder's point is for the address in use (the pull flow looks
@@ -107,6 +115,7 @@ function toParticipant(r: ParticipantRow, coords: Coords): Participant {
     state: text(r.state),
     locale: text(r.locale),
     joinTime: text(r.joinTime),
+    home: homeOf(r),
     active: r.active,
     lat: point?.lat ?? null,
     lng: point?.lng ?? null,
