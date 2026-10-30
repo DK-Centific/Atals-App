@@ -2775,3 +2775,46 @@ button:disabled::after { display: none; }
     .atlas-map-dot.is-suggested::before, .atlas-map-dot-ripple { animation: none; opacity: 0; }
     .atlas-map-dot.is-suggested .atlas-map-dot-core, .atlas-map-dot-rank { animation: none; }
 }
+
+/* ---------- New version ready ----------
+   Like Twilight's new-build banner: glass, top centre, slides down and stays until
+   Refresh now or Later (spec toast feel, but not auto-dismissed). Bottom on phones. */
+.atlas-update {
+    @apply fixed z-[1050] flex items-center gap-4 pl-5 pr-3 py-3 rounded-2xl;
+    top: 1rem; left: 50%; translate: -50% 0;
+    width: max-content; max-width: calc(100vw - 2rem);
+    background: rgba(34, 36, 40, 0.96);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+    border: 1px solid rgba(0, 229, 255, 0.18);
+    box-shadow: var(--neu-flat), 0 0 24px rgba(0, 229, 255, 0.08);
+    animation: updateIn 360ms var(--ease-out) backwards;
+}
+.atlas-update[data-state="closing"] { animation: updateOut 180ms var(--ease-out) forwards; }
+@keyframes updateIn { from { opacity: 0; transform: translateY(-120%); } }
+@keyframes updateOut { to { opacity: 0; transform: translateY(-120%); } }
+.atlas-update-dot { @apply flex-shrink-0 w-2 h-2 rounded-full; background: var(--accent); box-shadow: 0 0 10px var(--accent-glow); }
+.atlas-update-text { @apply flex flex-col gap-0.5 text-sm min-w-0; }
+.atlas-update-text strong { @apply font-semibold text-[var(--text-primary)]; }
+.atlas-update-sub { @apply text-xs text-[var(--text-secondary)]; }
+.atlas-update-actions { @apply flex items-center gap-3 flex-shrink-0; }
+.atlas-update-later { @apply text-xs whitespace-nowrap; }
+.atlas-update-refresh { @apply py-2.5 px-4 text-sm rounded-xl whitespace-nowrap; }
+.atlas-refresh-rail { position: relative; }
+.atlas-refresh-dot {
+    @apply absolute top-2.5 right-2.5 w-2 h-2 rounded-full pointer-events-none;
+    background: var(--accent); box-shadow: 0 0 0 2px var(--bg-surface), 0 0 8px var(--accent-glow);
+}
+@media (max-width: 639px) {
+    .atlas-update {
+        top: auto; bottom: calc(1rem + env(safe-area-inset-bottom));
+        width: calc(100vw - 1.5rem); @apply flex-wrap gap-3 pr-4;
+    }
+    .atlas-update-actions { @apply w-full justify-end; }
+    @keyframes updateIn { from { opacity: 0; transform: translateY(120%); } }
+    @keyframes updateOut { to { opacity: 0; transform: translateY(120%); } }
+}
+@media (prefers-reduced-motion: reduce) {
+    .atlas-update { animation: fade 120ms linear backwards; }
+    .atlas-update[data-state="closing"] { animation: fadeOut 120ms linear forwards; }
+}

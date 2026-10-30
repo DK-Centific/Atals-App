@@ -9,6 +9,7 @@ import { ParticipantProvider } from './state/ParticipantContext.jsx'
 import { FilterProvider } from './state/FilterContext.jsx'
 import { MapProvider } from './state/MapContext.jsx'
 import { ModeratorProvider } from './state/ModeratorContext.jsx'
+import UpdateNotice, { UpdateProvider } from './components/UpdateNotice.jsx'
 import Tour from './tour/Tour.jsx'
 import { TourProvider } from './tour/TourContext.jsx'
 
@@ -28,9 +29,12 @@ export default function Root() {
               <FilterProvider>
                 <MapProvider>
                   <TourProvider>
-                    <DemoBanner />
-                    <App />
-                    <Tour />
+                    <UpdateProvider>
+                      <DemoBanner />
+                      <App />
+                      <Tour />
+                      <UpdateNotice />
+                    </UpdateProvider>
                   </TourProvider>
                 </MapProvider>
               </FilterProvider>
