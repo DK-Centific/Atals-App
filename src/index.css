@@ -2525,3 +2525,43 @@ button:disabled::after { display: none; }
     .atlas-tpl-pop, .atlas-tpl-imgbar { animation: none; }
     .atlas-templates-item:active, .atlas-tpl-tool:active, .atlas-tpl-select:active, .atlas-tpl-swatch:active, .atlas-tpl-imgbar-btn:active { scale: none; }
 }
+
+/* Production tracker > Home types: a house per type that fills from the ground up
+   (completed, then booked). Colours are the status tokens; the counts say the same in words. */
+.atlas-home-grid { @apply grid gap-5; grid-template-columns: repeat(auto-fit, minmax(min(100%, 30rem), 1fr)); }
+.atlas-home-card { @apply flex flex-col gap-6 p-7 rounded-3xl; }
+.atlas-home-top { @apply flex items-center gap-7; }
+.atlas-home-house { @apply w-40 h-auto flex-shrink-0; overflow: visible; }
+.atlas-home-open { fill: var(--bg-recessed); }
+.atlas-home-fill { transform-box: fill-box; transform-origin: bottom; animation: atlas-home-rise 900ms var(--ease-out) backwards; }
+.atlas-home-fill--completed { fill: var(--status-completed); }
+.atlas-home-fill--booked { fill: var(--status-booked); animation-delay: 120ms; }
+.atlas-home-outline { fill: none; stroke: var(--text-secondary); stroke-width: 2; stroke-linejoin: round; }
+.atlas-home-line { fill: none; stroke: rgba(255, 255, 255, 0.28); stroke-width: 1.5; }
+@keyframes atlas-home-rise { from { transform: scaleY(0); } }
+@media (prefers-reduced-motion: reduce) { .atlas-home-fill { animation: none; } }
+.atlas-home-open-dot { @apply inline-block w-2 h-2 rounded-full flex-shrink-0; background: var(--bg-recessed); box-shadow: inset 0 0 0 1px var(--text-secondary); }
+.atlas-home-summary { @apply flex flex-col gap-3 min-w-0 flex-1; }
+.atlas-home-name { @apply text-base font-semibold text-[var(--text-primary)] m-0; }
+.atlas-home-covered { @apply m-0 text-sm text-[var(--text-secondary)]; }
+.atlas-home-covered strong { @apply text-3xl font-semibold text-[var(--accent)] mr-1; font-variant-numeric: tabular-nums; }
+.atlas-home-stats { @apply grid grid-cols-3 gap-3 m-0; }
+.atlas-home-stat { @apply flex flex-col gap-1 min-w-0; }
+.atlas-home-stat-value { @apply m-0 text-3xl font-semibold leading-none text-[var(--text-primary)]; font-variant-numeric: tabular-nums; }
+.atlas-home-stat-label { @apply flex items-center gap-1.5 text-xs text-[var(--text-secondary)]; }
+.atlas-home-breakdown { @apply flex flex-col gap-3 pt-5 border-t border-[rgba(255,255,255,0.06)]; }
+.atlas-home-rows { @apply grid gap-x-8 gap-y-3 m-0 p-0 list-none; }
+.atlas-home-rows--2 { grid-template-columns: repeat(auto-fit, minmax(min(100%, 11rem), 1fr)); }
+.atlas-home-row { @apply grid items-baseline gap-x-3 gap-y-1.5; grid-template-columns: 1fr auto; }
+.atlas-home-row-label { @apply text-sm text-[var(--text-primary)] min-w-0 truncate; }
+.atlas-home-row-count { @apply text-sm font-semibold text-[var(--text-primary)]; font-variant-numeric: tabular-nums; }
+.atlas-home-row-track { @apply col-span-2 block h-1 rounded-full overflow-hidden; background: var(--bg-recessed); }
+.atlas-home-row-bar { @apply block h-full rounded-full; background: rgba(0, 229, 255, 0.55); }
+.atlas-home-row.is-zero .atlas-home-row-label,
+.atlas-home-row.is-zero .atlas-home-row-count { @apply text-[var(--text-muted)] font-normal; }
+@media (max-width: 639px) {
+    .atlas-home-card { @apply p-5; }
+    .atlas-home-top { @apply flex-col items-center text-center; }
+    .atlas-home-summary { @apply items-center w-full; }
+    .atlas-home-house { @apply w-36; }
+}

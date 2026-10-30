@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import Sidebar from '../components/Sidebar.jsx'
+import HomeTypes from '../components/tracker/HomeTypes.jsx'
 import { StatusDot } from '../components/StatusLegend.jsx'
 import { STATUS, TODAY } from '../data/schedule.js'
 import { HOURLY_RATE, MILEAGE_RATE, billableHours, formatHours, formatUsd, isBillable } from '../lib/billing.js'
@@ -10,7 +11,7 @@ import CountUp from '../motion/CountUp.jsx'
 import useSlidingPill from '../motion/useSlidingPill.js'
 import { useSchedule } from '../state/ScheduleContext.jsx'
 import { useModerators } from '../state/ModeratorContext.jsx'
-import { useParticipants } from '../state/ParticipantContext.jsx'
+import { QUEUE_RADIUS_MI, bookingState, inArea, useParticipants } from '../state/ParticipantContext.jsx'
 
 // Admin > Production tracker. Everything is counted from the bookings
 // (Atlas_Bookings): no separate tracker list. Status colours are Atlas's status
@@ -144,6 +145,18 @@ export default function TrackerView() {
     ? sessions.filter((s) => s.date >= week[0].date && s.date <= week[6].date)
     : sessions), [sessions, range, week])
 
+  // Home types: the Seattle-area participants (within QUEUE_RADIUS_MI, or anyone with a
+  // booking), each marked completed / booked / open from this range's bookings.
+  const homePeople = useMemo(() => {
+    const hasBooking = new Set(sessions.filter((s) => s.status !== 'cancelled').map((s) => s.participantId))
+    return participants
+      .filter((p) => p.active && (inArea(p) || hasBooking.has(p.id)))
+      .map((p) => {
+        const state = bookingState(inRange, p.id).status
+        return { ...p, state: state === 'completed' ? 'completed' : state === 'booked' || state === 'insession' ? 'booked' : 'open' }
+      })
+  }, [participants, sessions, inRange])
+
   const counts = countBy(inRange)
   const total = inRange.length
   const scheduled = total - counts.cancelled
@@ -245,6 +258,11 @@ export default function TrackerView() {
             <StatusBar counts={counts} total={total} />
             <DayColumns days={days} />
           </div>
+
+          <HomeTypes
+            people={homePeople}
+            scopeNote={`Endorsed participants within ${QUEUE_RADIUS_MI} mi of HQ, plus anyone already booked. Completed and booked count ${range === 'week' ? 'this week' : 'all time'}.`}
+          />
 
           <section className="atlas-tracker-card atlas-raised-sm" aria-label="Mileage and billable hours">
             <div className="atlas-tracker-card-head">

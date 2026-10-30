@@ -25,11 +25,22 @@ const wait = (ms: number, signal?: AbortSignal) => new Promise<void>((resolve, r
   signal?.addEventListener('abort', () => { clearTimeout(t); reject(new DOMException('Aborted', 'AbortError')) })
 })
 
+// Sample data only (demo mode, or no read flow on localhost): made-up home answers in
+// OneForma's options, so the tracker's Home types section has something to show.
+const SAMPLE_SIZES = ['less than 150 sq. m.', '150-200 sq. m.', 'more than 200 sq. m.']
+const SAMPLE_FEATURES = ['L-shape', 'Open Plan', 'Curved Walls', 'Mirrors', 'Glass', 'Stairs']
+function withSampleHome(p: Participant, i: number): Participant {
+  if (p.home) return p
+  const type = i % 3 === 0 ? 'Single-family Single-story' : 'Single-family Multi-story'
+  const features = SAMPLE_FEATURES.filter((_, f) => ((i + 1) * (f + 3)) % 4 === 0)
+  return { ...p, home: { type, size: SAMPLE_SIZES[i % 3] ?? null, features } }
+}
+
 export async function fetchParticipants(signal?: AbortSignal): Promise<ParticipantSnapshot> {
   if (!READ_URL) {
     await wait(SAMPLE_DELAY_MS, signal)
     const { participants, stats } = ingest(SAMPLE_FEED, OF_PROJECT_ID, SAMPLE_COORDS)
-    return { participants, stats, fetchedAt: new Date().toISOString() }
+    return { participants: participants.map(withSampleHome), stats, fetchedAt: new Date().toISOString() }
   }
   const body = await fetchRead()
   if (signal?.aborted) throw new DOMException('Aborted', 'AbortError')
