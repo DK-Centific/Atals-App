@@ -1,6 +1,7 @@
 import { firstName } from '../../data/moderators.js'
 import { useModerators } from '../../state/ModeratorContext.jsx'
 import { CheckIcon, ClockIcon } from '../Icons.jsx'
+import { MAX_SESSIONS_PER_MODERATOR_PER_DAY } from '../../lib/bookings.js'
 
 // Form fields shared by the New Booking panel and the booking details panel.
 
@@ -45,8 +46,9 @@ export function TextField({ label, value, onChange, type = 'text', placeholder, 
 
 // One moderator per session. `busy` holds who already has a booking at this
 // time; they stay pickable, and booking them shows the clash. `optional` puts
-// "Unassigned" first, for a booking an Admin will staff later.
-export function ModeratorPicker({ value, onChange, busy = new Set(), optional = false }) {
+// "Unassigned" first, for a booking an Admin will staff later. `counts` (email ->
+// sessions that day) shows "3 of 5"; anyone at the daily limit can't be picked.
+export function ModeratorPicker({ value, onChange, busy = new Set(), optional = false, counts = null }) {
   const { moderators } = useModerators()
   if (!moderators.length && !optional) return <p className="atlas-empty">No active moderators. Add one in Admin › Users.</p>
   const options = [
@@ -58,21 +60,25 @@ export function ModeratorPicker({ value, onChange, busy = new Set(), optional = 
       {options.map((m) => {
         const active = m.email === (value ?? '')
         const isBusy = busy.has(m.email)
+        const n = counts && !m.unassigned ? counts.get(m.email) ?? 0 : null
+        const full = n != null && n >= MAX_SESSIONS_PER_MODERATOR_PER_DAY && !active
         return (
           <button
             key={m.email || 'unassigned'}
             type="button"
             role="radio"
-            className={`atlas-moderator-option${active ? ' is-active' : ''}${isBusy ? ' is-busy' : ''}${m.unassigned ? ' is-unassigned' : ''}`}
+            className={`atlas-moderator-option${active ? ' is-active' : ''}${isBusy ? ' is-busy' : ''}${full ? ' is-full' : ''}${m.unassigned ? ' is-unassigned' : ''}`}
             aria-checked={active}
-            aria-label={m.unassigned ? 'Unassigned, an Admin assigns one later' : `${m.displayName}${isBusy ? ', busy at this time' : ''}`}
-            title={m.unassigned ? 'An Admin assigns the moderator once the booking is ready' : m.displayName}
+            disabled={full}
+            aria-label={m.unassigned ? 'Unassigned, an Admin assigns one later' : `${m.displayName}${n != null ? `, ${n} of ${MAX_SESSIONS_PER_MODERATOR_PER_DAY} sessions that day` : ''}${full ? ', full' : ''}${isBusy ? ', busy at this time' : ''}`}
+            title={m.unassigned ? 'An Admin assigns the moderator once the booking is ready' : full ? `${m.displayName} already has ${MAX_SESSIONS_PER_MODERATOR_PER_DAY} sessions that day, the daily limit` : m.displayName}
             onClick={() => onChange(m.email)}
           >
             <span className="atlas-moderator-badge" aria-hidden="true">{m.unassigned ? '–' : initials(m.displayName)}</span>
             <span className="atlas-moderator-text">
               <span className="atlas-moderator-name">{m.unassigned ? 'Unassigned' : firstName(m)}</span>
-              {isBusy && <span className="atlas-moderator-busy">Busy</span>}
+              {full ? <span className="atlas-moderator-busy">Full day</span> : isBusy && <span className="atlas-moderator-busy">Busy</span>}
+              {n != null && !full && <span className="atlas-moderator-count">{n} of {MAX_SESSIONS_PER_MODERATOR_PER_DAY}</span>}
             </span>
             <span className="atlas-moderator-check"><CheckIcon /></span>
           </button>

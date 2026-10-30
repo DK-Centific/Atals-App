@@ -18,7 +18,8 @@ const AVG_MPH = 24
 const cache = new Map()
 const keyOf = (a, b) => `${a.lng.toFixed(5)},${a.lat.toFixed(5)};${b.lng.toFixed(5)},${b.lat.toFixed(5)}`
 
-function estimate(from, to) {
+/** A straight-line guess at the drive (no routing call): { coords, miles, minutes }. */
+export function estimate(from, to) {
   const miles = milesBetween(from, to) * DETOUR
   return { coords: arcBetween(from, to), miles, minutes: Math.max(2, Math.round((miles / AVG_MPH) * 60)), estimated: true }
 }

@@ -3,7 +3,8 @@ import { STATUS, TODAY } from '../../data/schedule.js'
 import { billableHours, formatHours, isBillable, sessionHours } from '../../lib/billing.js'
 import { longDayLabel, timeRange } from '../../lib/dates.js'
 import {
-  checkDetails, checkTimes, conflictMessage, displayNames, findConflict, isLocked, needsModerator, slotLabel, withEnd, withStart,
+  checkDetails, checkTimes, conflictMessage, dailyLimitProblem, displayNames, findConflict, isLocked, moderatorDayCounts, needsModerator,
+  slotLabel, withEnd, withStart,
 } from '../../lib/bookings.js'
 import { MS, prefersReducedMotion } from '../../motion/motion.js'
 import usePresence from '../../motion/usePresence.js'
@@ -597,7 +598,8 @@ function EditForm({ session }) {
     if (problem) return fail(problem)
     if (moved) {
       const clash = findConflict(sessions, { ...slot, moderator: session.moderator }, session.id)
-      const timeProblem = checkTimes(slot) ?? (clash && conflictMessage(clash, moderatorName)) ?? (linked && !reason.trim() && 'Add a reason for the new time. OneForma records it with the change.')
+      const timeProblem = checkTimes(slot) ?? (clash && conflictMessage(clash, moderatorName))
+        ?? dailyLimitProblem(sessions, { ...slot, moderator: session.moderator }, moderatorName, session.id) ?? (linked && !reason.trim() && 'Add a reason for the new time. OneForma records it with the change.')
       if (timeProblem) return fail(timeProblem)
     }
     const details = {
@@ -649,11 +651,14 @@ function AssignForm({ session }) {
   const busy = useMemo(() => new Set(sessions
     .filter((s) => findConflict([s], { ...session, moderator: s.moderator }, session.id))
     .map((s) => s.moderator)), [sessions, session])
+  const dayCounts = useMemo(() => moderatorDayCounts(sessions, session.date, session.id), [sessions, session])
 
   const save = () => {
     if (moderator === (session.moderator ?? '')) return fail(moderator ? 'Pick a different moderator.' : 'Pick a moderator.')
     const clash = findConflict(sessions, { ...session, moderator }, session.id)
     if (clash) return fail(conflictMessage(clash, moderatorName))
+    const full = dailyLimitProblem(sessions, { ...session, moderator }, moderatorName, session.id)
+    if (full) return fail(full)
     assignModerator(session.id, moderator)
     saved(moderator ? `moderator ${moderatorLabel(moderator)}` : 'moderator unassigned')
   }
@@ -666,7 +671,7 @@ function AssignForm({ session }) {
       </div>
       <div className="atlas-field">
         <span className="atlas-eyebrow">MODERATOR</span>
-        <ModeratorPicker optional value={moderator} busy={busy} onChange={setModerator} />
+        <ModeratorPicker optional value={moderator} busy={busy} counts={dayCounts} onChange={setModerator} />
       </div>
     </FormShell>
   )
@@ -688,7 +693,8 @@ function RescheduleForm({ session }) {
       return fail('Pick a new date or time.')
     }
     const clash = findConflict(sessions, { ...slot, moderator: session.moderator }, session.id)
-    const problem = checkTimes(slot) ?? (clash && conflictMessage(clash, moderatorName)) ?? (linked && !reason.trim() && 'Add a reason. OneForma records it with the change.')
+    const problem = checkTimes(slot) ?? (clash && conflictMessage(clash, moderatorName))
+      ?? dailyLimitProblem(sessions, { ...slot, moderator: session.moderator }, moderatorName, session.id) ?? (linked && !reason.trim() && 'Add a reason. OneForma records it with the change.')
     if (problem) return fail(problem)
     rescheduleSession(session.id, slot, reason.trim())
     saved(`moved to ${slotLabel(slot)}`)

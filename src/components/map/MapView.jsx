@@ -7,7 +7,12 @@ import { firstName } from '../../data/moderators.js'
 import { useModerators } from '../../state/ModeratorContext.jsx'
 import { HQ, boxAround, participantMiles } from '../../lib/geo.js'
 import { etaFrom, formatDrive, routeBetween } from '../../lib/routing.js'
-import { clock12, longDayLabel } from '../../lib/dates.js'
+import { matches } from '../../lib/filters.js'
+import { homeKey, homeLabel } from '../../lib/home.js'
+import { milesSaved, nearbyTo, nextSlot } from '../../lib/nearby.js'
+import { MAX_SESSIONS_PER_MODERATOR_PER_DAY } from '../../lib/bookings.js'
+import { useFilteredPicks } from '../../state/FilterContext.jsx'
+import { clock12, longDayLabel, timeRange } from '../../lib/dates.js'
 import { prefersReducedMotion } from '../../motion/motion.js'
 import usePresence from '../../motion/usePresence.js'
 import useFocusTrap, { returnFocus } from '../../motion/useFocusTrap.js'
@@ -143,6 +148,15 @@ function addRouteLayers(map) {
     layout: { 'line-cap': 'round' },
     paint: { 'line-color': '#00E5FF', 'line-width': 2, 'line-opacity': 0.45, 'line-dasharray': [1, 2.5] },
   }, 'atlas-route-glow')
+  // "Book nearby next": faint dashed lines from the booked place to each suggestion.
+  map.addSource('atlas-nearby', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } })
+  map.addLayer({
+    id: 'atlas-nearby',
+    type: 'line',
+    source: 'atlas-nearby',
+    layout: { 'line-cap': 'round' },
+    paint: { 'line-color': '#FCD34D', 'line-width': 1.5, 'line-opacity': 0.5, 'line-dasharray': [1.5, 2.5] },
+  }, 'atlas-route-pending')
 }
 
 // One MapLibre map for the life of the Map view.
@@ -265,7 +279,8 @@ function LiveMap({ onClose }) {
   // { to, label, trip: null | { miles, minutes, eta, estimated, reason } }
   const [route, setRoute] = useState(null)
   const anim = useRef(0)
-  // New booking over the map: who it is for, and the Book button to return focus to.
+  // New booking over the map: { id, preset } (preset: a suggested slot), and the
+  // Book button to return focus to.
   const [booking, setBooking] = useState(null)
   const bookTrigger = useRef(null)
   const request = useRef(null)
@@ -279,9 +294,12 @@ function LiveMap({ onClose }) {
   const routeItems = useMemo(() => (route ? [{ id: 'route', lng: route.to.lng, lat: route.to.lat }] : []), [route])
   const routeHost = useMarkerHosts(map, routeItems, 'atlas-map-pin atlas-map-pin--label')
 
+  // Points every fit also keeps in view: the "Book nearby next" suggestions.
+  const alsoFit = useRef([])
   const fit = useCallback((coords) => {
-    const lngs = coords.map((c) => c[0])
-    const lats = coords.map((c) => c[1])
+    const all = [...coords, ...alsoFit.current]
+    const lngs = all.map((c) => c[0])
+    const lats = all.map((c) => c[1])
     // Never closer than the opening view: picking someone zooms out to fit the trip.
     map.fitBounds([[Math.min(...lngs), Math.min(...lats)], [Math.max(...lngs), Math.max(...lats)]], {
       padding: mapPadding(true),
@@ -376,7 +394,51 @@ function LiveMap({ onClose }) {
 
   const inReach = shown.filter((p) => p.distMi != null && inView(p))
   const selectedItem = queue.find((p) => p.id === selected) ?? null
-  const bookingItem = queue.find((p) => p.id === booking) ?? null
+  const bookingItem = queue.find((p) => p.id === booking?.id) ?? null
+
+  // "Book nearby next": a booked place (the anchor) lights up the closest people still
+  // open to book, within the Home type filter and the Range from HQ.
+  const { canBook } = useRole()
+  const picks = useFilteredPicks()
+  const homePicks = useMemo(() => picks.filter((p) => p.group === 'home'), [picks])
+  const anchor = canBook && selectedItem?.status === 'booked' && selectedItem.session && selectedItem.lat != null ? selectedItem : null
+  const nearby = useMemo(() => {
+    if (!anchor) return []
+    const open = queue.filter((p) => p.status === 'open' && matches(homePicks, { home: homeKey(p.home?.type) }))
+    return nearbyTo(anchor, open).map((r) => ({
+      ...r,
+      slot: nextSlot(anchor.session, r.minutes, sessions),
+      saved: milesSaved(anchor, r.participant),
+    }))
+  }, [anchor, queue, homePicks, sessions])
+  const rankOf = useMemo(() => new Map(nearby.map((r, i) => [r.participant.id, i + 1])), [nearby])
+
+  // Keep the booked place and its suggestions in view, now and in any route fit.
+  const anchorId = anchor?.id
+  useEffect(() => {
+    alsoFit.current = anchor ? nearby.map((r) => [r.participant.lng, r.participant.lat]) : []
+    if (!map || !anchor || !nearby.length) return
+    fit([[anchor.lng, anchor.lat]])
+  }, [map, anchorId]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    const src = map?.getSource('atlas-nearby')
+    if (!src) return
+    src.setData({
+      type: 'FeatureCollection',
+      features: anchor ? nearby.map((r) => lineOf([[anchor.lng, anchor.lat], [r.participant.lng, r.participant.lat]])) : [],
+    })
+  }, [map, anchor, nearby])
+
+  // Esc, or a click on empty map, puts the picked dot (and its suggestions) away.
+  useEffect(() => {
+    if (!map || !selected) return undefined
+    const clear = () => setSelected(null)
+    const onKey = (e) => { if (e.key === 'Escape' && !document.querySelector('[role="dialog"]:not(.atlas-map)')) clear() }
+    map.on('click', clear)
+    document.addEventListener('keydown', onKey)
+    return () => { map.off('click', clear); document.removeEventListener('keydown', onKey) }
+  }, [map, selected, setSelected])
 
   const closeBooking = useCallback(() => {
     setBooking(null)
@@ -386,11 +448,13 @@ function LiveMap({ onClose }) {
   // and the tile's Book button becomes View booking, which takes focus.
   // Booked from the map: open its details, like the Day view does, so the
   // "Send emails" buttons and Undo are right there. The map stays behind it.
+  // The new booking becomes the anchor, so its own nearby suggestions follow.
   const booked = useCallback((created, summary) => {
     setBooking(null)
+    if (created.participantId) setSelected(created.participantId)
     openBooking(created.id)
     setNote({ id: created.id, text: `Booked ${summary}`, undo: () => removeSession(created.id), closes: true })
-  }, [openBooking, setNote, removeSession])
+  }, [openBooking, setNote, removeSession, setSelected])
 
   return (
     <>
@@ -420,8 +484,10 @@ function LiveMap({ onClose }) {
         return createPortal(
           <ParticipantDot
             participant={p}
-            revealed={on}
+            revealed={on || rankOf.has(p.id)}
             selected={p.id === selected}
+            rank={rankOf.get(p.id)}
+            dimmed={Boolean(anchor) && p.status === 'open' && !rankOf.has(p.id)}
             onPick={() => setSelected(p.id === selected ? null : p.id)}
           />,
           host.el,
@@ -443,12 +509,15 @@ function LiveMap({ onClose }) {
           trip={route?.to.id === selectedItem.id ? route.trip ?? 'loading' : null}
           onRoute={() => focusParticipant(selectedItem.id)}
           onDismiss={() => setSelected(null)}
-          onBook={(e) => { bookTrigger.current = e.currentTarget; setBooking(selectedItem.id) }}
+          onBook={(e) => { bookTrigger.current = e.currentTarget; setBooking({ id: selectedItem.id }) }}
+          nearby={anchor ? nearby : null}
+          onBookNearby={(e, id, preset) => { bookTrigger.current = e.currentTarget; setBooking({ id, preset }) }}
         />
       )}
 
       <MapBookingSheet
         participant={bookingItem}
+        preset={booking?.preset ?? null}
         trip={bookingItem && route?.to.id === bookingItem.id ? route.trip ?? 'loading' : null}
         onClose={closeBooking}
         onBooked={booked}
@@ -479,19 +548,20 @@ function LiveMap({ onClose }) {
   )
 }
 
-function ParticipantDot({ participant: p, revealed, selected, onPick }) {
+function ParticipantDot({ participant: p, revealed, selected, rank, dimmed, onPick }) {
   const when = p.session ? `${p.session.date === TODAY ? 'Today' : longDayLabel(p.session.date)} ${clock12(p.session.start)}` : null
   return (
     <button
       type="button"
-      className={`atlas-map-dot atlas-map-dot--${p.status}${revealed ? ' is-revealed' : ''}${selected ? ' is-selected' : ''}`}
+      className={`atlas-map-dot atlas-map-dot--${p.status}${revealed ? ' is-revealed' : ''}${selected ? ' is-selected' : ''}${rank ? ' is-suggested' : ''}${dimmed ? ' is-dimmed' : ''}`}
       tabIndex={revealed ? 0 : -1}
       aria-hidden={!revealed}
       aria-pressed={selected}
-      aria-label={`${p.name}, ${STATUS_TEXT[p.status]}${when ? `, ${when}` : ''}, ${participantMiles(p)} from HQ`}
+      aria-label={`${rank ? `Suggestion ${rank}: ` : ''}${p.name}, ${STATUS_TEXT[p.status]}${when ? `, ${when}` : ''}, ${participantMiles(p)} from HQ`}
       onClick={(e) => { e.stopPropagation(); onPick() }}
     >
       <span className="atlas-map-dot-core" />
+      {rank && <span className="atlas-map-dot-rank" aria-hidden="true">{rank}</span>}
       <span className="atlas-map-dot-label" aria-hidden="true">
         {p.name.toUpperCase()} · <span className="atlas-map-dot-status">{STATUS_TEXT[p.status].toUpperCase()}</span>
       </span>
@@ -742,7 +812,7 @@ function AddressFix({ participant: p }) {
 }
 
 // Info and actions for the dot that was clicked.
-function InfoTile({ participant: p, trip, onRoute, onDismiss, onBook }) {
+function InfoTile({ participant: p, trip, onRoute, onDismiss, onBook, nearby = null, onBookNearby }) {
   const { openBooking, triggerRef } = useSchedule()
   const { canBook } = useRole()
   const { label: moderatorLabel } = useModerators()
@@ -758,6 +828,15 @@ function InfoTile({ participant: p, trip, onRoute, onDismiss, onBook }) {
           </div>
           <h3 className="atlas-map-info-name">{p.name}</h3>
           <div className="atlas-map-info-id">{p.id} · {p.locale}</div>
+          {nearby?.length > 0 && (
+            <button
+              type="button"
+              className="atlas-link atlas-nearby-jump"
+              onClick={(e) => e.currentTarget.closest('.atlas-map-info')?.querySelector('.atlas-nearby')?.scrollIntoView({ block: 'start', behavior: prefersReducedMotion() ? 'auto' : 'smooth' })}
+            >
+              {nearby.length} {nearby.length === 1 ? 'person' : 'people'} nearby to book next ↓
+            </button>
+          )}
         </div>
         <button type="button" className="atlas-map-info-close" aria-label="Close details" onClick={onDismiss}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M18 6 6 18M6 6l12 12" /></svg>
@@ -814,6 +893,7 @@ function InfoTile({ participant: p, trip, onRoute, onDismiss, onBook }) {
           </button>
         )}
       </div>
+      {nearby && <NearbyList anchor={p} nearby={nearby} onBook={onBookNearby} />}
       {(p.phone || p.email) && (
         <div className="atlas-map-info-contact">
           {p.phone && <a className="atlas-link" href={`tel:${p.phone}`}>{p.phone}</a>}
@@ -823,4 +903,64 @@ function InfoTile({ participant: p, trip, onRoute, onDismiss, onBook }) {
     </section>
   )
 }
+
+// "Book nearby next": the closest people still open to book from this booked place,
+// each with a time right after it (same moderator, unless they're at the daily
+// limit) and a one-click booking. Distances and drives are estimates.
+function NearbyList({ anchor, nearby, onBook }) {
+  const { name: moderatorName } = useModerators()
+  const s = anchor.session
+  const first = firstWord(anchor.name)
+  if (!nearby.length) {
+    return (
+      <section className="atlas-nearby" aria-label="Book nearby next">
+        <div className="atlas-eyebrow atlas-nearby-title">BOOK NEARBY NEXT</div>
+        <p className="atlas-nearby-empty">No one open to book nearby. Try a wider Range from HQ in Filters.</p>
+      </section>
+    )
+  }
+  const top = nearby[0]
+  return (
+    <section className="atlas-nearby" aria-label="Book nearby next">
+      <div className="atlas-eyebrow atlas-nearby-title">BOOK NEARBY NEXT</div>
+      {top.saved >= 1 && (
+        <p className="atlas-nearby-saving">
+          Booking {firstWord(top.participant.name)} right after {first} saves about {Math.round(top.saved)} mi of driving compared with a separate trip from HQ.
+        </p>
+      )}
+      <ol className="atlas-nearby-list">
+        {nearby.map(({ participant: q, miles, minutes, slot }, i) => (
+          <li key={q.id} className="atlas-nearby-row atlas-row-in" style={{ animationDelay: `${i * 35}ms` }}>
+            <span className="atlas-nearby-rank" aria-hidden="true">{i + 1}</span>
+            <div className="atlas-nearby-text">
+              <span className="atlas-nearby-name">{q.name}</span>
+              <span className="atlas-nearby-meta">
+                {miles < 10 ? miles.toFixed(1) : Math.round(miles)} mi from {first} · about {formatDrive(minutes)} drive
+                {q.home?.type ? ` · ${homeLabel(q.home.type)}` : ''}
+              </span>
+              {slot?.full && <span className="atlas-nearby-note">{moderatorName(s.moderator)} already has {MAX_SESSIONS_PER_MODERATOR_PER_DAY} sessions that day, so this one starts without a moderator.</span>}
+            </div>
+            <div className="atlas-nearby-actions">
+              {slot ? (
+                <button
+                  type="button"
+                  className="atlas-nearby-book"
+                  title={`${s.date === TODAY ? 'Today' : longDayLabel(s.date)}, ${timeRange(slot.start, slot.end)}${slot.moderator ? ` with ${moderatorName(slot.moderator)}` : ''}`}
+                  onClick={(e) => onBook(e, q.id, slot)}
+                >
+                  Book at {clock12(slot.start)}
+                </button>
+              ) : (
+                <span className="atlas-nearby-none">No time left that day</span>
+              )}
+              <button type="button" className="atlas-link atlas-nearby-other" onClick={(e) => onBook(e, q.id, null)}>Other day</button>
+            </div>
+          </li>
+        ))}
+      </ol>
+    </section>
+  )
+}
+
+const firstWord = (name) => name.replace(/^(dr|mr|mrs|ms|mx|prof)\.?\s+/i, '').split(' ')[0]
 

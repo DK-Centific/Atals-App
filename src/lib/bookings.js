@@ -36,15 +36,15 @@ export function checkDetails({ name, email }) {
 
 // Sessions run 2 hours: picking a start sets the end 2 hours later, and picking
 // an end sets the start 2 hours earlier (kept inside the same day).
-const SESSION_MINUTES = 120
+export const SESSION_MINUTES = 120
 const hhmm = (m) => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`
 const shifted = (time, by) => hhmm(Math.min(23 * 60 + 59, Math.max(0, toMinutes(time) + by)))
 export const withStart = (start) => (start ? { start, end: shifted(start, SESSION_MINUTES) } : { start })
 export const withEnd = (end) => (end ? { end, start: shifted(end, -SESSION_MINUTES) } : { end })
 
 // Matches the Week timeline (08:00 - 21:00 rows).
-const DAY_START = '08:00'
-const DAY_END = '22:00'
+export const DAY_START = '08:00'
+export const DAY_END = '22:00'
 
 export function checkTimes({ date, start, end }) {
   if (!date || !start || !end) return 'Pick a date, start time and end time.'
@@ -81,6 +81,29 @@ export function findConflict(sessions, slot, ignoreId) {
 
 // `name` turns the moderator's email into what people call them (useModerators().name).
 export const conflictMessage = (s, name) =>
-  `${name(s.moderator)} already has ${s.name} ${s.start} – ${s.end} that day.`
+  `${name(s.moderator)} already has ${s.name} ${timeRange(s.start, s.end)} that day.`
+
+// A moderator runs at most this many sessions a day (DswK, 2026-10-30). Cancelled
+// sessions don't count.
+export const MAX_SESSIONS_PER_MODERATOR_PER_DAY = 5
+
+/** Live sessions per moderator on `date`, leaving out `ignoreId` (the one being changed). */
+export function moderatorDayCounts(sessions, date, ignoreId) {
+  const counts = new Map()
+  for (const s of sessions) {
+    if (s.id === ignoreId || s.status === 'cancelled' || !s.moderator || s.date !== date) continue
+    counts.set(s.moderator, (counts.get(s.moderator) ?? 0) + 1)
+  }
+  return counts
+}
+
+/** The daily-limit message if `slot`'s moderator is already full that day, else null. */
+export function dailyLimitProblem(sessions, slot, name, ignoreId) {
+  if (!slot.moderator || !slot.date) return null
+  const n = moderatorDayCounts(sessions, slot.date, ignoreId).get(slot.moderator) ?? 0
+  return n >= MAX_SESSIONS_PER_MODERATOR_PER_DAY
+    ? `${name(slot.moderator)} already has ${MAX_SESSIONS_PER_MODERATOR_PER_DAY} sessions on ${longDayLabel(slot.date)}, the daily limit.`
+    : null
+}
 
 export const slotLabel = ({ date, start, end }) => `${longDayLabel(date)} · ${timeRange(start, end)}`

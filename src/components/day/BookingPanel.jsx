@@ -2,7 +2,10 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { TODAY } from '../../data/schedule.js'
 import { addDays, longDayLabel, timeRange, weekOf, weekRangeLabel } from '../../lib/dates.js'
-import { activeBookingFor, checkDetails, checkTimes, conflictMessage, displayNames, findConflict, slotLabel, withEnd, withStart } from '../../lib/bookings.js'
+import {
+  activeBookingFor, checkDetails, checkTimes, conflictMessage, dailyLimitProblem, displayNames, findConflict, moderatorDayCounts, slotLabel,
+  withEnd, withStart,
+} from '../../lib/bookings.js'
 import Collapse from '../../motion/Collapse.jsx'
 import useSlidingPill from '../../motion/useSlidingPill.js'
 import { useToast } from '../../motion/Toast.jsx'
@@ -24,8 +27,9 @@ const DEFAULTS = {
 // "New Booking" form: pick a day, a time range and the participant, then book. The
 // moderator is optional: left Unassigned, an Admin assigns one once it is ready.
 // On the Day view it is a panel. The map's booking sheet passes `participant`
-// (fixed, so the queue picker hides) and `onBooked`, and supplies its own header.
-export default function BookingPanel({ participant = null, onBooked = null }) {
+// (fixed, so the queue picker hides) and `onBooked`, and supplies its own header;
+// `preset` ({ date, start, moderator }) fills a suggested slot from "Book nearby next".
+export default function BookingPanel({ participant = null, onBooked = null, preset = null }) {
   const { sessions, addSession, removeSession, openBooking, setNote, triggerRef, draft } = useSchedule()
   const queue = useQueue({ rangeMi: null })
   const { rangeMi, setRangeMi } = useParticipants()
@@ -51,6 +55,7 @@ export default function BookingPanel({ participant = null, onBooked = null }) {
   const busy = useMemo(() => new Set(sessions
     .filter((s) => findConflict([s], { ...form, moderator: s.moderator }))
     .map((s) => s.moderator)), [sessions, form])
+  const dayCounts = useMemo(() => moderatorDayCounts(sessions, form.date), [sessions, form.date])
   const { trackRef, pillProps } = useSlidingPill(`${slide.key}:${form.date}`)
 
   // Fill name, address and contact from a OneForma participant.
@@ -60,9 +65,12 @@ export default function BookingPanel({ participant = null, onBooked = null }) {
     set({ participantId: p.id, requestId: p.requestId, name: p.name, location: p.address.split(',')[0], email: p.email ?? '', phone: p.phone ?? '' })
   }
 
-  // The map's sheet books one known person: fill the form from them once.
+  // The map's sheet books one known person: fill the form from them once, plus the
+  // suggested day, time and moderator when it came from "Book nearby next".
   useEffect(() => {
-    if (participant) pickParticipant(participant.id)
+    if (!participant) return
+    pickParticipant(participant.id)
+    if (preset) set({ date: preset.date, ...withStart(preset.start), moderator: preset.moderator ?? '' })
   }, [participant?.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // A participant handed over from elsewhere: fill the form and bring it into view.
@@ -96,6 +104,7 @@ export default function BookingPanel({ participant = null, onBooked = null }) {
     // One live booking per participant: reschedule that one rather than booking twice.
     const already = activeBookingFor(sessions, form.participantId)
     const problem = checkTimes(form) ?? checkDetails(form) ?? (clash && conflictMessage(clash, moderatorName))
+      ?? dailyLimitProblem(sessions, form, moderatorName)
       ?? (already && `${already.name} is already booked for ${slotLabel(already)}. Open that booking to reschedule it.`)
     if (problem) return fail(problem)
     const miles = bookingRouteMiles(queue.find((p) => p.id === form.participantId))
@@ -230,7 +239,7 @@ export default function BookingPanel({ participant = null, onBooked = null }) {
           {isAdmin && <Link to="/admin/users" className="atlas-moderator-create atlas-link">MANAGE</Link>}
         </div>
         {!isAdmin && <p className="atlas-booking-moderators-hint">Leave it Unassigned if you don’t know yet. An Admin assigns one once the booking is ready.</p>}
-        <ModeratorPicker optional value={form.moderator} busy={busy} onChange={(moderator) => set({ moderator })} />
+        <ModeratorPicker optional value={form.moderator} busy={busy} counts={dayCounts} onChange={(moderator) => set({ moderator })} />
       </div>
     </>
   )

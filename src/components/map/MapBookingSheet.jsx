@@ -9,8 +9,9 @@ import BookingPanel from '../day/BookingPanel.jsx'
 
 // New Booking over the map: the Day view's booking form in a sheet (right side
 // on desktop, bottom sheet on a phone), filled from the person picked on the
-// map, so booking never leaves the map. `trip` is their drive from HQ, if routed.
-export default function MapBookingSheet({ participant, trip, onClose, onBooked }) {
+// map, so booking never leaves the map. `trip` is their drive from HQ, if routed;
+// `preset` is a suggested slot from "Book nearby next".
+export default function MapBookingSheet({ participant, preset = null, trip, onClose, onBooked }) {
   const open = Boolean(participant)
   const { mounted, state, onAnimationEnd } = usePresence(open, MS.sheetExit)
   const sheetRef = useRef(null)
@@ -53,7 +54,7 @@ export default function MapBookingSheet({ participant, trip, onClose, onBooked }
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12" /></svg>
           </button>
         </header>
-        <BookingPanel key={p.id} participant={p} onBooked={onBooked} />
+        <BookingPanel key={p.id} participant={p} preset={preset} onBooked={onBooked} />
       </div>
     </div>,
     document.body,
