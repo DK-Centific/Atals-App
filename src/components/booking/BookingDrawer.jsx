@@ -573,32 +573,60 @@ function useFormSheet(session) {
 }
 
 function EditForm({ session }) {
-  const { updateSession } = useSchedule()
+  const { sessions, updateSession, rescheduleSession } = useSchedule()
+  const { name: moderatorName } = useModerators()
   const { back, fail, saved, shakeKey } = useFormSheet(session)
   // The moderator isn't edited here: an Admin assigns or changes it from the details.
+  // Date and time can change while the booking is still booked; that saves as a reschedule.
+  const canMove = session.status === 'booked'
+  const linked = isLinked(session)
   const [form, setForm] = useState({
     name: session.name, location: session.location ?? '', email: session.email ?? '',
     phone: session.phone ?? '', protocol: session.protocol ?? '', notes: session.notes ?? '',
   })
+  const [slot, setSlot] = useState({ date: session.date, start: session.start, end: session.end })
+  const [reason, setReason] = useState('')
   const set = (patch) => setForm((f) => ({ ...f, ...patch }))
+  const setTime = (patch) => setSlot((f) => ({ ...f, ...patch }))
+  const moved = canMove && (slot.date !== session.date || slot.start !== session.start || slot.end !== session.end)
 
   const save = () => {
     const problem = checkDetails(form)
     if (problem) return fail(problem)
-    updateSession(session.id, {
+    if (moved) {
+      const clash = findConflict(sessions, { ...slot, moderator: session.moderator }, session.id)
+      const timeProblem = checkTimes(slot) ?? (clash && conflictMessage(clash, moderatorName)) ?? (linked && !reason.trim() && 'Add a reason for the new time. OneForma records it with the change.')
+      if (timeProblem) return fail(timeProblem)
+    }
+    const details = {
       ...displayNames(form.name),
       location: form.location.trim(),
       email: form.email.trim(),
       phone: form.phone.trim(),
       protocol: form.protocol.trim(),
       notes: form.notes.trim(),
-    })
-    saved('details updated')
+    }
+    const detailsChanged = Object.entries(details).some(([k, v]) => (session[k] ?? '') !== v)
+    if (detailsChanged || !moved) updateSession(session.id, details)
+    if (moved) rescheduleSession(session.id, slot, reason.trim())
+    saved(moved ? `moved to ${slotLabel(slot)}` : 'details updated')
   }
 
   return (
     <FormShell session={session} mode="edit" onBack={back} onSave={save} saveLabel="Save changes" shakeKey={shakeKey}>
       <TextField label="PARTICIPANT" value={form.name} onChange={(v) => set({ name: v })} autoFocus />
+      {canMove && (
+        <>
+          <TextField label="DATE" type="date" value={slot.date} onChange={(v) => setTime({ date: v })} />
+          <div className="atlas-booking-times atlas-booking-times--sheet">
+            <TimeField label="START TIME" value={slot.start} onChange={(v) => setTime(withStart(v))} />
+            <TimeField label="END TIME" value={slot.end} onChange={(v) => setTime(withEnd(v))} />
+          </div>
+          {moved && (
+            <TextField label={linked ? 'REASON FOR NEW TIME' : 'REASON FOR NEW TIME (OPTIONAL)'} multiline value={reason} placeholder="e.g. Participant asked for a later slot" onChange={setReason} />
+          )}
+        </>
+      )}
       <TextField label="LOCATION" value={form.location} placeholder="Address or meeting link" onChange={(v) => set({ location: v })} />
       <div className="atlas-field-row">
         <TextField label="EMAIL" type="email" value={form.email} onChange={(v) => set({ email: v })} />
