@@ -6,10 +6,10 @@ import { TODAY } from '../../data/schedule.js'
 import { firstName } from '../../data/moderators.js'
 import { useModerators } from '../../state/ModeratorContext.jsx'
 import { HQ, boxAround, participantMiles } from '../../lib/geo.js'
-import { etaFrom, formatDrive, routeBetween } from '../../lib/routing.js'
+import { driveTimesFrom, etaFrom, formatDrive, routeBetween } from '../../lib/routing.js'
 import { matches } from '../../lib/filters.js'
 import { homeKey, homeLabel } from '../../lib/home.js'
-import { milesSaved, nearbyTo, nextSlot } from '../../lib/nearby.js'
+import { NEARBY_ASK, NEARBY_COUNT, closestTo, milesSaved, nearbyTo, nextSlot } from '../../lib/nearby.js'
 import { MAX_SESSIONS_PER_MODERATOR_PER_DAY } from '../../lib/bookings.js'
 import { useFilteredPicks } from '../../state/FilterContext.jsx'
 import { clock12, longDayLabel, timeRange } from '../../lib/dates.js'
@@ -119,6 +119,13 @@ function mapPadding(route = false) {
 
 const easeOut = (t) => 1 - (1 - t) ** 4
 
+// "Book nearby next" timing: the ripple leads, then each road line draws out
+// (nearest first) and its dot pops in on arrival. Matches .atlas-map-dot.is-suggested
+// in index.css.
+const NEARBY_LEAD = 200
+const NEARBY_STEP = 120
+const NEARBY_DRAW = 700
+
 const lineOf = (pts) => ({ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: pts } })
 const EMPTY_LINE = lineOf([])
 
@@ -155,7 +162,7 @@ function addRouteLayers(map) {
     type: 'line',
     source: 'atlas-nearby',
     layout: { 'line-cap': 'round' },
-    paint: { 'line-color': '#FCD34D', 'line-width': 1.5, 'line-opacity': 0.5, 'line-dasharray': [1.5, 2.5] },
+    paint: { 'line-color': '#FCD34D', 'line-width': 2, 'line-opacity': 0.5, 'line-dasharray': [1.5, 2.5] },
   }, 'atlas-route-pending')
 }
 
@@ -396,39 +403,111 @@ function LiveMap({ onClose }) {
   const selectedItem = queue.find((p) => p.id === selected) ?? null
   const bookingItem = queue.find((p) => p.id === booking?.id) ?? null
 
-  // "Book nearby next": a booked place (the anchor) lights up the closest people still
-  // open to book, within the Home type filter and the Range from HQ.
+  // "Book nearby next": the picked person (the anchor, open or booked) lights up the
+  // closest people still open to book, within the Home type filter and Range from HQ.
+  // From a booked place each comes with a time right after it.
   const { canBook } = useRole()
   const picks = useFilteredPicks()
   const homePicks = useMemo(() => picks.filter((p) => p.group === 'home'), [picks])
-  const anchor = canBook && selectedItem?.status === 'booked' && selectedItem.session && selectedItem.lat != null ? selectedItem : null
-  const nearby = useMemo(() => {
+  const anchor = canBook && selectedItem?.lat != null
+    && (selectedItem.status === 'open' || (selectedItem.status === 'booked' && selectedItem.session)) ? selectedItem : null
+  // Ranked by road: the 12 nearest in a straight line go to routing in ONE table
+  // request, the 5 shortest drives win, then their 5 road routes are fetched (cached,
+  // dropped on a new anchor). Routing down: the straight-line 5, drawn dashed.
+  const anchorKey = anchor ? `${anchor.id}@${anchor.lat},${anchor.lng}` : ''
+  const shortlist = useMemo(() => {
     if (!anchor) return []
     const open = queue.filter((p) => p.status === 'open' && matches(homePicks, { home: homeKey(p.home?.type) }))
-    return nearbyTo(anchor, open).map((r) => ({
-      ...r,
-      slot: nextSlot(anchor.session, r.minutes, sessions),
-      saved: milesSaved(anchor, r.participant),
-    }))
-  }, [anchor, queue, homePicks, sessions])
+    return closestTo(anchor, open, NEARBY_ASK)
+  }, [anchorKey, queue, homePicks]) // eslint-disable-line react-hooks/exhaustive-deps
+  const shortKey = shortlist.map((r) => r.participant.id).join(',')
+  // { key, loading, items: [{ participant, miles, minutes, coords, estimated }] }
+  const [road, setRoad] = useState(null)
+  useEffect(() => {
+    if (!anchor || !shortlist.length) { setRoad(anchor ? { key: anchorKey, loading: false, items: [] } : null); return undefined }
+    const key = `${anchorKey}|${shortKey}`
+    const ctrl = new AbortController()
+    setRoad({ key, loading: true, items: [] })
+    const from = { lat: anchor.lat, lng: anchor.lng }
+    ;(async () => {
+      const times = await driveTimesFrom(from, shortlist.map((r) => r.participant), ctrl.signal)
+      const picked = times
+        ? shortlist
+          .map((r, i) => times[i] && { participant: r.participant, miles: times[i].miles, minutes: times[i].minutes, estimated: false })
+          .filter(Boolean)
+          .sort((x, y) => x.minutes - y.minutes || x.miles - y.miles)
+          .slice(0, NEARBY_COUNT)
+        : nearbyTo(from, shortlist.map((r) => r.participant)).map((r) => ({ participant: r.participant, miles: r.miles, minutes: r.minutes, estimated: true }))
+      const routes = times
+        ? await Promise.all(picked.map((r) => routeBetween(from, r.participant, ctrl.signal).catch(() => null)))
+        : picked.map(() => null)
+      if (ctrl.signal.aborted) return
+      setRoad({
+        key,
+        loading: false,
+        items: picked.map((r, i) => ({
+          ...r,
+          coords: routes[i]?.estimated === false ? routes[i].coords : [[from.lng, from.lat], [r.participant.lng, r.participant.lat]],
+          estimated: r.estimated || routes[i]?.estimated !== false,
+        })),
+      })
+    })().catch(() => { /* a newer anchor took over */ })
+    return () => ctrl.abort()
+  }, [anchorKey, shortKey]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const roadReady = Boolean(anchor && road && !road.loading && road.key.startsWith(anchorKey))
+  const nearby = useMemo(() => (roadReady ? road.items.map((r) => ({
+    ...r,
+    slot: anchor.session ? nextSlot(anchor.session, r.minutes, sessions) : null,
+    saved: milesSaved(anchor, r.participant),
+  })) : []), [roadReady, road, anchor, sessions])
   const rankOf = useMemo(() => new Map(nearby.map((r, i) => [r.participant.id, i + 1])), [nearby])
 
-  // Keep the booked place and its suggestions in view, now and in any route fit.
-  const anchorId = anchor?.id
+  // Keep the anchor and its suggestions in any route fit, and bring them into view
+  // now only if one is off screen (so picking a dot never jumps the map needlessly).
+  const nearbyKey = roadReady ? road.key : ''
   useEffect(() => {
-    alsoFit.current = anchor ? nearby.map((r) => [r.participant.lng, r.participant.lat]) : []
+    alsoFit.current = nearby.map((r) => [r.participant.lng, r.participant.lat])
     if (!map || !anchor || !nearby.length) return
-    fit([[anchor.lng, anchor.lat]])
-  }, [map, anchorId]) // eslint-disable-line react-hooks/exhaustive-deps
+    const bounds = map.getBounds()
+    const off = [anchor, ...nearby.map((r) => r.participant)].some((p) => !bounds.contains([p.lng, p.lat]))
+    if (off) fit([[anchor.lng, anchor.lat]])
+  }, [map, nearbyKey]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Each line draws out from the anchor along its road, nearest first, NEARBY_STEP
+  // apart; its numbered dot pops in as the line arrives (index.css). Estimates are
+  // dashed. Reduced motion: drawn at once.
   useEffect(() => {
     const src = map?.getSource('atlas-nearby')
-    if (!src) return
-    src.setData({
+    if (!src) return undefined
+    const dashed = nearby.some((r) => r.estimated)
+    if (map.getLayer('atlas-nearby')) {
+      map.setPaintProperty('atlas-nearby', 'line-dasharray', dashed ? [1.5, 2.5] : undefined)
+      map.setPaintProperty('atlas-nearby', 'line-opacity', dashed ? 0.5 : 0.7)
+    }
+    const lines = (t) => ({
       type: 'FeatureCollection',
-      features: anchor ? nearby.map((r) => lineOf([[anchor.lng, anchor.lat], [r.participant.lng, r.participant.lat]])) : [],
+      features: nearby.map((r, i) => {
+        const k = easeOut(Math.min(1, Math.max(0, (t - NEARBY_LEAD - i * NEARBY_STEP) / NEARBY_DRAW)))
+        const pts = r.coords
+        if (pts.length === 2) {
+          const [[x0, y0], [x1, y1]] = pts
+          return lineOf([[x0, y0], [x0 + (x1 - x0) * k, y0 + (y1 - y0) * k]])
+        }
+        return lineOf(pts.slice(0, Math.max(k > 0 ? 2 : 1, Math.ceil(k * pts.length))))
+      }),
     })
-  }, [map, anchor, nearby])
+    if (!nearby.length || prefersReducedMotion()) { src.setData(lines(Infinity)); return undefined }
+    let raf = 0
+    const t0 = performance.now()
+    const end = NEARBY_LEAD + nearby.length * NEARBY_STEP + NEARBY_DRAW
+    const step = (now) => {
+      src.setData(lines(now - t0))
+      if (now - t0 < end) raf = requestAnimationFrame(step)
+    }
+    raf = requestAnimationFrame(step)
+    return () => cancelAnimationFrame(raf)
+  }, [map, nearbyKey]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Esc, or a click on empty map, puts the picked dot (and its suggestions) away.
   useEffect(() => {
@@ -487,6 +566,7 @@ function LiveMap({ onClose }) {
             revealed={on || rankOf.has(p.id)}
             selected={p.id === selected}
             rank={rankOf.get(p.id)}
+            anchorKey={p.id === anchor?.id ? anchor.id : null}
             dimmed={Boolean(anchor) && p.status === 'open' && !rankOf.has(p.id)}
             onPick={() => setSelected(p.id === selected ? null : p.id)}
           />,
@@ -511,7 +591,9 @@ function LiveMap({ onClose }) {
           onDismiss={() => setSelected(null)}
           onBook={(e) => { bookTrigger.current = e.currentTarget; setBooking({ id: selectedItem.id }) }}
           nearby={anchor ? nearby : null}
+          nearbyLoading={Boolean(anchor) && !roadReady}
           onBookNearby={(e, id, preset) => { bookTrigger.current = e.currentTarget; setBooking({ id, preset }) }}
+          onPickNearby={(id) => setSelected(id)}
         />
       )}
 
@@ -548,7 +630,7 @@ function LiveMap({ onClose }) {
   )
 }
 
-function ParticipantDot({ participant: p, revealed, selected, rank, dimmed, onPick }) {
+function ParticipantDot({ participant: p, revealed, selected, rank, anchorKey, dimmed, onPick }) {
   const when = p.session ? `${p.session.date === TODAY ? 'Today' : longDayLabel(p.session.date)} ${clock12(p.session.start)}` : null
   return (
     <button
@@ -558,8 +640,10 @@ function ParticipantDot({ participant: p, revealed, selected, rank, dimmed, onPi
       aria-hidden={!revealed}
       aria-pressed={selected}
       aria-label={`${rank ? `Suggestion ${rank}: ` : ''}${p.name}, ${STATUS_TEXT[p.status]}${when ? `, ${when}` : ''}, ${participantMiles(p)} from HQ`}
+      style={rank ? { '--rank': rank } : undefined}
       onClick={(e) => { e.stopPropagation(); onPick() }}
     >
+      {anchorKey && <span key={anchorKey} className="atlas-map-dot-ripple" aria-hidden="true" />}
       <span className="atlas-map-dot-core" />
       {rank && <span className="atlas-map-dot-rank" aria-hidden="true">{rank}</span>}
       <span className="atlas-map-dot-label" aria-hidden="true">
@@ -812,7 +896,7 @@ function AddressFix({ participant: p }) {
 }
 
 // Info and actions for the dot that was clicked.
-function InfoTile({ participant: p, trip, onRoute, onDismiss, onBook, nearby = null, onBookNearby }) {
+function InfoTile({ participant: p, trip, onRoute, onDismiss, onBook, nearby = null, nearbyLoading = false, onBookNearby, onPickNearby }) {
   const { openBooking, triggerRef } = useSchedule()
   const { canBook } = useRole()
   const { label: moderatorLabel } = useModerators()
@@ -834,7 +918,7 @@ function InfoTile({ participant: p, trip, onRoute, onDismiss, onBook, nearby = n
               className="atlas-link atlas-nearby-jump"
               onClick={(e) => e.currentTarget.closest('.atlas-map-info')?.querySelector('.atlas-nearby')?.scrollIntoView({ block: 'start', behavior: prefersReducedMotion() ? 'auto' : 'smooth' })}
             >
-              {nearby.length} {nearby.length === 1 ? 'person' : 'people'} nearby to book next ↓
+              {nearby.length} {nearby.length === 1 ? 'person' : 'people'} nearby{p.session ? ' to book next' : ' to book together'} ↓
             </button>
           )}
         </div>
@@ -893,7 +977,7 @@ function InfoTile({ participant: p, trip, onRoute, onDismiss, onBook, nearby = n
           </button>
         )}
       </div>
-      {nearby && <NearbyList anchor={p} nearby={nearby} onBook={onBookNearby} />}
+      {nearby && <NearbyList anchor={p} nearby={nearby} loading={nearbyLoading} onBook={onBookNearby} onPick={onPickNearby} />}
       {(p.phone || p.email) && (
         <div className="atlas-map-info-contact">
           {p.phone && <a className="atlas-link" href={`tel:${p.phone}`}>{p.phone}</a>}
@@ -904,44 +988,52 @@ function InfoTile({ participant: p, trip, onRoute, onDismiss, onBook, nearby = n
   )
 }
 
-// "Book nearby next": the closest people still open to book from this booked place,
-// each with a time right after it (same moderator, unless they're at the daily
-// limit) and a one-click booking. Distances and drives are estimates.
-function NearbyList({ anchor, nearby, onBook }) {
+// "Book nearby next": the closest people still open to book. From a booked place
+// each has a time right after it (same moderator, unless they're at the daily limit)
+// and a one-click booking; from an open person, they're the ones to book together.
+// Clicking a name makes that person the new starting point. Distances are estimates.
+function NearbyList({ anchor, nearby, loading, onBook, onPick }) {
   const { name: moderatorName } = useModerators()
   const s = anchor.session
   const first = firstWord(anchor.name)
-  if (!nearby.length) {
+  const title = s ? 'BOOK NEARBY NEXT' : `CLOSEST TO ${first.toUpperCase()}`
+  if (loading || !nearby.length) {
     return (
-      <section className="atlas-nearby" aria-label="Book nearby next">
-        <div className="atlas-eyebrow atlas-nearby-title">BOOK NEARBY NEXT</div>
-        <p className="atlas-nearby-empty">No one open to book nearby. Try a wider Range from HQ in Filters.</p>
+      <section className="atlas-nearby" aria-label={title} aria-busy={loading}>
+        <div className="atlas-eyebrow atlas-nearby-title">{title}</div>
+        <p className="atlas-nearby-empty" role="status">{loading ? 'Finding the nearest by road…' : 'No one else open to book nearby. Try a wider Range from HQ in Filters.'}</p>
       </section>
     )
   }
   const top = nearby[0]
+  const topName = firstWord(top.participant.name)
   return (
-    <section className="atlas-nearby" aria-label="Book nearby next">
-      <div className="atlas-eyebrow atlas-nearby-title">BOOK NEARBY NEXT</div>
+    <section className="atlas-nearby" aria-label={title}>
+      <div className="atlas-eyebrow atlas-nearby-title">{title}</div>
+      {!s && <p className="atlas-nearby-saving">Book these together on the same day to save driving.</p>}
       {top.saved >= 1 && (
         <p className="atlas-nearby-saving">
-          Booking {firstWord(top.participant.name)} right after {first} saves about {Math.round(top.saved)} mi of driving compared with a separate trip from HQ.
+          {s
+            ? `Booking ${topName} right after ${first} saves about ${Math.round(top.saved)} mi of driving compared with a separate trip from HQ.`
+            : `${first} and ${topName} on the same trip saves about ${Math.round(top.saved)} mi compared with two trips from HQ.`}
         </p>
       )}
       <ol className="atlas-nearby-list">
-        {nearby.map(({ participant: q, miles, minutes, slot }, i) => (
+        {nearby.map(({ participant: q, miles, minutes, slot, estimated }, i) => (
           <li key={q.id} className="atlas-nearby-row atlas-row-in" style={{ animationDelay: `${i * 35}ms` }}>
             <span className="atlas-nearby-rank" aria-hidden="true">{i + 1}</span>
             <div className="atlas-nearby-text">
-              <span className="atlas-nearby-name">{q.name}</span>
+              <button type="button" className="atlas-nearby-name" title={`Show who’s near ${q.name}`} onClick={() => onPick(q.id)}>{q.name}</button>
               <span className="atlas-nearby-meta">
-                {miles < 10 ? miles.toFixed(1) : Math.round(miles)} mi from {first} · about {formatDrive(minutes)} drive
+                {estimated ? 'about ' : ''}{miles < 10 ? miles.toFixed(1) : Math.round(miles)} mi {estimated ? '' : 'by road '}{s ? `from ${first} ` : ''}· {estimated ? 'about ' : ''}{formatDrive(minutes)} drive{estimated ? ' (estimate)' : ''}
                 {q.home?.type ? ` · ${homeLabel(q.home.type)}` : ''}
               </span>
               {slot?.full && <span className="atlas-nearby-note">{moderatorName(s.moderator)} already has {MAX_SESSIONS_PER_MODERATOR_PER_DAY} sessions that day, so this one starts without a moderator.</span>}
             </div>
             <div className="atlas-nearby-actions">
-              {slot ? (
+              {!s ? (
+                <button type="button" className="atlas-nearby-book" onClick={(e) => onBook(e, q.id, null)}>Book</button>
+              ) : slot ? (
                 <button
                   type="button"
                   className="atlas-nearby-book"
@@ -953,7 +1045,7 @@ function NearbyList({ anchor, nearby, onBook }) {
               ) : (
                 <span className="atlas-nearby-none">No time left that day</span>
               )}
-              <button type="button" className="atlas-link atlas-nearby-other" onClick={(e) => onBook(e, q.id, null)}>Other day</button>
+              {s && <button type="button" className="atlas-link atlas-nearby-other" onClick={(e) => onBook(e, q.id, null)}>Other day</button>}
             </div>
           </li>
         ))}

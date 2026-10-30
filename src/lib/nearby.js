@@ -1,7 +1,7 @@
-// "Book nearby next" on the map: from a booked place (the anchor), the closest
-// people still open to book, a time right after the anchor with the same
-// moderator, and the miles that saves. Straight-line estimates only, so it never
-// fires a burst of routing calls; the real road route is drawn only on request.
+// "Book nearby next" on the map: from the picked person (the anchor), the closest
+// people still open to book, a time right after a booked anchor with the same
+// moderator, and the miles that saves. The map ranks them by road (one routing
+// table request); these straight-line helpers are its shortlist and its fallback.
 
 import { TODAY, toMinutes } from '../data/schedule.js'
 import {
@@ -12,6 +12,8 @@ import { estimate } from './routing.js'
 
 export const NEARBY_COUNT = 5
 export const NEARBY_MILES = 10
+/** How many straight-line neighbours are checked by road before picking the 5. */
+export const NEARBY_ASK = 12
 
 const hhmm = (m) => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`
 const nextQuarter = (m) => Math.ceil(m / 15) * 15
@@ -24,6 +26,15 @@ export function nearbyTo(anchor, people) {
     .sort((a, b) => a.miles - b.miles)
   const close = ranked.filter((r) => r.miles <= NEARBY_MILES)
   return (close.length ? close : ranked).slice(0, NEARBY_COUNT)
+}
+
+/** The `n` closest people to `anchor` in a straight line (to ask routing about). */
+export function closestTo(anchor, people, n) {
+  return people
+    .filter((p) => p.lat != null && p.lng != null && p.id !== anchor.id)
+    .map((p) => ({ participant: p, ...estimate(anchor, p) }))
+    .sort((a, b) => a.miles - b.miles)
+    .slice(0, n)
 }
 
 /**

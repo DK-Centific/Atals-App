@@ -2710,19 +2710,38 @@ button:disabled::after { display: none; }
 }
 
 /* ---------- Book nearby next (map) ----------
-   Suggested people around a booked place: a lighter amber dot with a gentle pulse
-   ring and its number; other open dots step back. */
+   Picking a person sends a ripple out from their dot; then a road line draws out to
+   each of the closest people open to book (nearest first, 120ms apart after a 200ms
+   lead, 700ms each; matches NEARBY_* in MapView.jsx) and their bright amber dot and
+   number pop in as it arrives, then keep a soft pulse. Other open dots step back. */
 .atlas-map-dot.is-dimmed { opacity: 0.35; }
-.atlas-map-dot.is-suggested .atlas-map-dot-core { background: #FCD34D; box-shadow: 0 0 0 3px rgba(252, 211, 77, 0.18), 0 0 12px rgba(252, 211, 77, 0.5); }
+.atlas-map-dot-ripple {
+    @apply absolute inset-0 rounded-full pointer-events-none;
+    box-shadow: 0 0 0 2px rgba(252, 211, 77, 0.8);
+    animation: nearbyRipple 700ms var(--ease-out) forwards;
+}
+@keyframes nearbyRipple { from { opacity: 1; scale: 0.6; } to { opacity: 0; scale: 3.2; } }
+.atlas-map-dot.is-suggested { z-index: 4; }
+.atlas-map-dot.is-suggested .atlas-map-dot-core {
+    background: #FCD34D;
+    box-shadow: 0 0 0 4px rgba(252, 211, 77, 0.22), 0 0 16px rgba(252, 211, 77, 0.65);
+    animation: nearbyIn 460ms var(--spring) backwards;
+    animation-delay: calc(900ms + (var(--rank, 1) - 1) * 120ms);
+}
+@keyframes nearbyIn { from { scale: 0.2; opacity: 0; } }
 .atlas-map-dot.is-suggested::before {
     content: ''; position: absolute; inset: 2px; border-radius: 999px;
     box-shadow: 0 0 0 2px rgba(252, 211, 77, 0.55);
     animation: nearbyPulse 2000ms var(--ease-out) infinite;
+    animation-delay: calc(1400ms + (var(--rank, 1) - 1) * 120ms);
+    opacity: 0;
 }
-@keyframes nearbyPulse { from { opacity: 0.9; scale: 0.7; } to { opacity: 0; scale: 1.6; } }
+@keyframes nearbyPulse { from { opacity: 0.9; scale: 0.7; } to { opacity: 0; scale: 1.7; } }
 .atlas-map-dot-rank {
     @apply absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-bold tabular-nums text-black;
     background: #FCD34D;
+    animation: nearbyIn 360ms var(--spring) backwards;
+    animation-delay: calc(960ms + (var(--rank, 1) - 1) * 120ms);
 }
 
 .atlas-map-info { max-height: calc(100% - 19rem); overflow-y: auto; scrollbar-width: thin; scrollbar-color: rgba(255, 255, 255, 0.12) transparent; }
@@ -2738,7 +2757,10 @@ button:disabled::after { display: none; }
     background: #FCD34D;
 }
 .atlas-nearby-text { @apply flex flex-col gap-0.5 flex-1 min-w-0; }
-.atlas-nearby-name { @apply text-sm font-semibold truncate; }
+.atlas-nearby-name { @apply text-left text-sm font-semibold truncate cursor-pointer; }
+@media (hover: hover) and (pointer: fine) {
+    .atlas-nearby-name:hover { @apply underline underline-offset-2; }
+}
 .atlas-nearby-meta { @apply text-xs leading-snug text-[var(--text-secondary)]; }
 .atlas-nearby-note { @apply text-[11px] leading-snug text-[var(--status-open)]; }
 .atlas-nearby-actions { @apply flex flex-col items-end gap-1.5 flex-shrink-0; }
@@ -2750,5 +2772,6 @@ button:disabled::after { display: none; }
 .atlas-nearby-other { @apply text-[11px] whitespace-nowrap; }
 .atlas-nearby-none { @apply text-[11px] text-[var(--text-muted)] whitespace-nowrap; }
 @media (prefers-reduced-motion: reduce) {
-    .atlas-map-dot.is-suggested::before { animation: none; opacity: 0; }
+    .atlas-map-dot.is-suggested::before, .atlas-map-dot-ripple { animation: none; opacity: 0; }
+    .atlas-map-dot.is-suggested .atlas-map-dot-core, .atlas-map-dot-rank { animation: none; }
 }

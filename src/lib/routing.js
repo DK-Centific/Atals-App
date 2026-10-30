@@ -58,6 +58,39 @@ export async function routeBetween(from, to, signal) {
   }
 }
 
+// Drive time and distance from one point to many, in a single request (OSRM table).
+// Resolves to [{ miles, minutes }] in `to` order (null where no road was found), or
+// null when routing can't be reached. Only map points are sent.
+const tableCache = new Map()
+export async function driveTimesFrom(from, to, signal) {
+  if (!BASE || !to.length) return null
+  const key = [from, ...to].map((p) => `${p.lng.toFixed(5)},${p.lat.toFixed(5)}`).join(';')
+  if (tableCache.has(key)) return tableCache.get(key)
+  const timeout = new AbortController()
+  const timer = setTimeout(() => timeout.abort(), TIMEOUT_MS)
+  const onAbort = () => timeout.abort()
+  signal?.addEventListener('abort', onAbort)
+  try {
+    const res = await fetch(`${BASE}/table/v1/driving/${key}?sources=0&annotations=duration,distance`, { signal: timeout.signal })
+    if (!res.ok) throw new Error(`Routing answered ${res.status}`)
+    const body = await res.json()
+    const durations = body.durations?.[0]
+    const distances = body.distances?.[0]
+    if (body.code !== 'Ok' || !durations) throw new Error(body.message || 'No drive times')
+    const out = to.map((_, i) => (durations[i + 1] == null
+      ? null
+      : { minutes: Math.max(1, Math.round(durations[i + 1] / 60)), miles: (distances?.[i + 1] ?? 0) / METERS_PER_MILE }))
+    tableCache.set(key, out)
+    return out
+  } catch (err) {
+    if (signal?.aborted) throw err
+    return null
+  } finally {
+    clearTimeout(timer)
+    signal?.removeEventListener('abort', onAbort)
+  }
+}
+
 /** A road route already fetched for this pair, or null. */
 export const cachedTrip = (from, to) => cache.get(keyOf(from, to)) ?? null
 
